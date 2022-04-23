@@ -1,0 +1,14 @@
+numpy
+yaml
+bs4
+tqdm
+ipython
+kanjize
+wordcloud
+
+# 形態素解析ライブラリ，どちらかだけでもよい
+janome
+sudachipy
+
+# doc2vec用
+gensim==3.8.3
