@@ -2,6 +2,7 @@ import requests
 import json
 import datetime
 import pandas as pd
+import numpy as np
 
 from bs4 import BeautifulSoup
 from tqdm.auto import tqdm
@@ -171,7 +172,10 @@ class NicovideoInfomation():
                     'command':    com['mail'],
                     'score':      com['score']
                 }
-                datas = {k: v for k, v in datas.items() if v is not None}
+                datas = {
+                    k: v if v is not None else np.nan
+                    for k, v in datas.items()
+                }
 
                 comments_dict[comment_id] = datas
 
@@ -183,10 +187,17 @@ class NicovideoInfomation():
             return comments_df
 
         def merge_df(a_df, b_df):
-            ab_df = pd.merge(
-                a_df.reset_index(), b_df.reset_index(), how='outer'
-            ).set_index('comment_id').sort_values('write_time')
-            return ab_df
+            if a_df.empty and b_df.empty:
+                return sorted([a_df, b_df], key=lambda x: len(x.columns))[-1]
+            elif a_df.empty:
+                return b_df
+            elif b_df.empty:
+                return a_df
+            else:
+                ab_df = pd.merge(
+                    a_df.reset_index(), b_df.reset_index(), how='outer'
+                ).set_index('comment_id').sort_values('write_time')
+                return ab_df
 
         def check_df(comments_df, tgt_forks):
             got_forks = set(map(int, set(comments_df.index.str[0])))
