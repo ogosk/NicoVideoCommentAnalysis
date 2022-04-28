@@ -279,7 +279,7 @@ class NicovideoInfomation():
                     ))
                 for fork in forks
             }
-
+            # 一度に読み込める大体のコメントの数(目安)
             avg_cnum = {
                 0: min(500, self.video_counter['comment']//10),
                 1: 1000,
