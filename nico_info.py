@@ -3,6 +3,7 @@ import json
 import datetime
 import pandas as pd
 import numpy as np
+from time import sleep
 
 from bs4 import BeautifulSoup
 from tqdm.auto import tqdm
@@ -247,10 +248,12 @@ class NicovideoInfomation():
                 tgt_time = max([
                     fork2tmp[fork].write_time[int((len(fork2tmp[fork])-1)*hop_rate)]
                     for fork in forks
-                ])
-                tgt_df = convert_to_df(
-                    fetch_comments(forks, when=tgt_time)
-                )
+                    if not fork2tmp[fork].empty
+                ]+[-1])
+                if tgt_time == -1:
+                    sleep(3)
+                    continue
+                tgt_df = convert_to_df(fetch_comments(forks, when=tgt_time))
                 if tgt_df.empty:
                     break
 
