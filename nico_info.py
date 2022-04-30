@@ -126,7 +126,7 @@ class NicovideoInfomation():
                     'anonymity': 0,
                     'fork':      0,
                     'score':     0,
-                    'mail':      None,
+                    'mail':      '',
                     'position':  basic_commands['position'][0],
                     'size':      basic_commands['size'][0],
                     'color':     basic_commands['color'][0]
