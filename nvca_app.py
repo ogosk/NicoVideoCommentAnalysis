@@ -3,6 +3,9 @@ from tkinter import ttk
 import ttkthemes
 from PIL import Image, ImageTk
 from wordcloud import WordCloud
+import pandas as pd
+import webbrowser
+from tqdm.tk import tqdm as tqdm_tk
 
 from nico_info import NicovideoInfomation
 from utils.parser import fetch_ranking_info, fetch_video_info, url2img
@@ -48,16 +51,18 @@ PANE2_W = 1000
 WORDCLOUD_W = 600
 WORDCLOUD_H = 350
 
+
 class Application(ttk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
 
         self.master.title("NicoVideoCommentAnalysis")
-        
+
         # pane1
         pane1_frame = ttk.Frame(self.master, width=PANE1_W)
         # pane2
         pane2_frame = ttk.Frame(self.master, width=PANE2_W)
+        notebook = ttk.Notebook(pane2_frame)
 
         pane1_frame.pack(side=tk.LEFT)
         pane2_frame.pack(side=tk.LEFT, fill=tk.Y)
@@ -86,23 +91,45 @@ class Application(ttk.Frame):
             'like': '',
             'mylist': ''
         }
-        
+        self.comments_df = pd.DataFrame(
+            columns=[
+                'comment_id', 'comment', 'user_id', 'write_time', 'video_time',
+                '184', 'position', 'size', 'color', 'command', 'score'
+            ]
+        ).set_index('comment_id')
+
         self.p1_frame = pane1_frame
         self.p2_frame = pane2_frame
+
+        self.notebook = notebook
+
         self.c_button = None
         self.rv_buttons = None
-        
+
         self.pane1_set()
         self.pane2_set()
-        
+
     def pane1_set(self):
         self.input_panel_set()
         self.ranking_panel_set()
-    
+
     def pane2_set(self):
+        self.notebook_set()
+        self.control_panel_set()
         self.card_view()
-        self.comment_load_panel_set()
-    
+        self.comment_view()
+
+    def notebook_set(self):
+        comment_load_tab = ttk.Frame(self.notebook)
+        comment_tab = ttk.Frame(self.notebook)
+        wordcloud_tab = ttk.Frame(self.notebook)
+
+        self.notebook.add(comment_load_tab, text='読み込み/抽出')
+        self.notebook.add(comment_tab, text='コメント')
+        self.notebook.add(wordcloud_tab, text='WordCloud')
+
+        self.notebook.grid(row=1, column=0)
+
     def input_panel_set(self):
         # input frame
         input_frame = ttk.Frame(self.p1_frame)
@@ -119,7 +146,7 @@ class Application(ttk.Frame):
             url = f'https://www.nicovideo.jp/watch/{vid.get()}'
             self.card_dict = fetch_video_info(url)
             _ = self.card_view()
-            
+
         vid_button = ttk.Button(
             input_frame,
             text='OK',
@@ -137,12 +164,12 @@ class Application(ttk.Frame):
             textvariable=vurl,
             width=35
         )
-        
+
         def vurl_click_callback():
             url = vurl.get()
             self.card_dict = fetch_video_info(url)
             self.card_view()
-        
+
         vurl_button = ttk.Button(
             input_frame,
             text='OK',
@@ -157,11 +184,11 @@ class Application(ttk.Frame):
 
     def ranking_panel_set(self):
         ranking_frame = ttk.Frame(self.p1_frame)
-        
+
         genre = tk.StringVar()
         genres_combobox = ttk.Combobox(
             ranking_frame,
-            textvariable=genre, 
+            textvariable=genre,
             values=list(genres_dict.keys()),
             width=15,
             state='readonly'
@@ -177,14 +204,14 @@ class Application(ttk.Frame):
             state='readonly'
         )
         terms_combobox.current(0)
-        
+
         confirm_button = ttk.Button(
             ranking_frame,
-            text='OK',
-            width=3,
+            text='ランキング取得',
+            width=10,
             command=self.ranking_view
         )
-        
+
         rviewer_frame = ttk.Frame(ranking_frame)
         rviewer_canvas = tk.Canvas(
             rviewer_frame, width=420, height=800, bd=0
@@ -195,13 +222,13 @@ class Application(ttk.Frame):
             rviewer_frame, orient=tk.VERTICAL, command=rviewer_canvas.yview
         )
         rviewer_scrollbar.pack(side=tk.LEFT, fill=tk.Y)
-        
+
         rviewer_canvas['yscrollcommand'] = rviewer_scrollbar.set
         rviewer_canvas.yview_moveto(0)
 
         size_y = 100 * 50
         rviewer_canvas.config(scrollregion=(0, 0, 0, size_y))
-        
+
         rvc_frame = tk.Frame(rviewer_canvas)
         rviewer_canvas.create_window(
             (0, 0),
@@ -214,46 +241,169 @@ class Application(ttk.Frame):
         rviewer_frame.grid(row=1, columnspan=3)
 
         ranking_frame.grid(row=1, column=0)
-        
+
         self.genre = genre
         self.term = term
         self.rvc_frame = rvc_frame
-    
-    def comment_load_panel_set(self):
-        comment_load_frame = ttk.Frame(self.p2_frame)
-        fork0 = tk.BooleanVar(); fork0.set(True)
-        fork0_checkbutton = ttk.Checkbutton(
-            comment_load_frame, variable=fork0, text='一般コメント'
+
+    def control_panel_set(self):
+        notebook = self.notebook
+
+        # --- load ---
+        load_frame = ttk.LabelFrame(
+            notebook.nametowidget(notebook.tabs()[0]),
+            text='コメント読み込み', relief=tk.RIDGE, padding=[10, 10, 10, 10]
         )
-        fork1 = tk.BooleanVar(); fork1.set(True)
-        fork1_checkbutton = ttk.Checkbutton(
-            comment_load_frame, variable=fork1, text='投稿者コメント'
+
+        load_opt_frame = ttk.LabelFrame(
+            load_frame, text='options', relief=tk.RIDGE,
+            padding=[10, 10, 10, 10]
         )
-        fork2 = tk.BooleanVar(); fork2.set(True)
-        fork2_checkbutton = ttk.Checkbutton(
-            comment_load_frame, variable=fork2, text='かんたんコメント'
+
+        lfork_opt_frame = ttk.LabelFrame(
+            load_opt_frame, text='コメントの種類', labelanchor=tk.NW,
+            padding=[5, 5, 5, 5]
         )
-        
+        lfork0 = tk.BooleanVar(); lfork0.set(True)
+        lfork0_checkbutton = ttk.Checkbutton(
+            lfork_opt_frame, variable=lfork0, text='一般コメント'
+        )
+        lfork1 = tk.BooleanVar(); lfork1.set(True)
+        lfork1_checkbutton = ttk.Checkbutton(
+            lfork_opt_frame, variable=lfork1, text='投稿者コメント'
+        )
+        lfork2 = tk.BooleanVar(); lfork2.set(True)
+        lfork2_checkbutton = ttk.Checkbutton(
+            lfork_opt_frame, variable=lfork2, text='かんたんコメント'
+        )
+
+        mode_opt_frame = ttk.LabelFrame(
+            load_opt_frame, text='mode', labelanchor=tk.NW,
+            padding=[5, 5, 5, 5]
+        )
+        mode = tk.StringVar(value='once')
+        once_radiobutton = ttk.Radiobutton(
+            mode_opt_frame,
+            text='once',
+            value='once',
+            variable=mode
+        )
+        roughly_radiobutton = ttk.Radiobutton(
+            mode_opt_frame,
+            text='roughly',
+            value='roughly',
+            variable=mode
+        )
+        exactly_radiobutton = ttk.Radiobutton(
+            mode_opt_frame,
+            text='exactly',
+            value='exactly',
+            variable=mode
+        )
+
+        hop_rate_opt_frame = ttk.LabelFrame(
+            load_opt_frame, text='hop rate', labelanchor=tk.NW,
+            padding=[5, 5, 5, 5]
+        )
+        hop_rate_val = ttk.Label(
+            hop_rate_opt_frame,
+            text='hop rate',
+            width=4,
+            relief=tk.SUNKEN,
+        )
+
+        def set_label(value):
+            hop_rate_val['text'] = str(round(float(value), 2))
+
+        hop_rate = tk.DoubleVar(value=.1)
+        hop_rate_scale = ttk.Scale(
+            hop_rate_opt_frame,
+            orient=tk.HORIZONTAL,
+            variable=hop_rate,
+            from_=.1,
+            to=.9,
+            length=130,
+            command=set_label
+        )
+        hop_rate_scale.set(.2)
+
         def cl_click_callback():
-            self.comment_load()
+            options = {
+                'forks': [i for i, fork in enumerate([lfork0, lfork1, lfork2]) if fork.get()],
+                'mode': mode.get(),
+                'hop_rate': hop_rate.get()
+            }
+
+            self.comment_load(**options)
             self.comment_view()
             self.wordcloud_generate()
             self.wordcloud_view()
         
-        comment_load_button = ttk.Button(
-            comment_load_frame,
-            text='Load', padding=[0, 0, 0], width=4,
+        lbuttons_frame = ttk.Frame(
+            load_frame, padding=[10, 10, 10, 10]
+        )
+
+        load_button = ttk.Button(
+            lbuttons_frame,
+            text='load', padding=[0, 0, 0], width=20,
             command=cl_click_callback
         )
+
+        load_frame.grid(row=0, column=0, padx=10, pady=10)
+
+        load_opt_frame.grid(row=0, column=0, padx=10, pady=10)
+
+        lfork_opt_frame.grid(row=0, column=0)
+        lfork0_checkbutton.grid(row=0, column=0)
+        lfork1_checkbutton.grid(row=0, column=1)
+        lfork2_checkbutton.grid(row=0, column=2)
+
+        mode_opt_frame.grid(row=1, column=0, sticky=tk.W)
+        once_radiobutton.grid(row=0, column=0)
+        roughly_radiobutton.grid(row=0, column=1)
+        exactly_radiobutton.grid(row=0, column=2)
+
+        hop_rate_opt_frame.grid(row=2, column=0, sticky=tk.W)
+        hop_rate_scale.grid(row=0, column=0)
+        hop_rate_val.grid(row=0, column=1)
+
+        lbuttons_frame.grid(row=0, column=1, padx=10, pady=10)
+        load_button.grid(row=0, column=0)
+
+        # --- extract ---
+        extract_frame = ttk.LabelFrame(
+            notebook.nametowidget(notebook.tabs()[0]),
+            text='コメント抽出', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+        )
+        extract_opt_frame = ttk.LabelFrame(
+            extract_frame, text='options', relief=tk.RIDGE,
+            padding=[10, 10, 10, 10]
+        )
+        efork_opt_frame = ttk.LabelFrame(
+            extract_opt_frame, text='コメントの種類', labelanchor=tk.NW,
+            padding=[5, 5, 5, 5]
+        )
+        efork0 = tk.BooleanVar(); efork0.set(True)
+        efork0_checkbutton = ttk.Checkbutton(
+            efork_opt_frame, variable=efork0, text='一般コメント'
+        )
+        efork1 = tk.BooleanVar(); efork1.set(True)
+        efork1_checkbutton = ttk.Checkbutton(
+            efork_opt_frame, variable=efork1, text='投稿者コメント'
+        )
+        efork2 = tk.BooleanVar(); efork2.set(True)
+        efork2_checkbutton = ttk.Checkbutton(
+            efork_opt_frame, variable=efork2, text='かんたんコメント'
+        )
+
+        extract_frame.grid(row=1, column=0, padx=10, pady=10)
         
-        fork0_checkbutton.grid(row=0, column=0)
-        fork1_checkbutton.grid(row=0, column=1)
-        fork2_checkbutton.grid(row=0, column=2)
-        comment_load_button.grid(row=0, column=3)#, sticky='nsw')
+        extract_opt_frame.grid(row=0, column=0)
         
-        comment_load_frame.grid(row=1, column=0)
-        
-        self.forks = [fork0, fork1, fork2]
+        efork_opt_frame.grid(row=0, column=0)
+        efork0_checkbutton.grid(row=0, column=0)
+        efork1_checkbutton.grid(row=0, column=1)
+        efork2_checkbutton.grid(row=0, column=2)
 
     def ranking_view(self):
         if self.rv_buttons:
@@ -264,37 +414,41 @@ class Application(ttk.Frame):
         url = f'https://www.nicovideo.jp/ranking/{genre_key}?term={term_key}'
         info_dict = fetch_ranking_info(url)
         self.ranking_info = info_dict
-            
+
         def rviewer_click_callback(i):
             def x():
                 self.card_dict = self.ranking_info[(i, )[0]]
                 _ = self.card_view()
             return x
-        
+
         rviewer_buttons = []
-        for i, d in info_dict.items():
-            thumbnail = url2img(d['thumbnail'])
-            thumbnail = ImageTk.PhotoImage(thumbnail.resize((63, 47)))
-            if len(d['title']) < 50:
-                title = d['title']
-            else:
-                title = d['title'][:50] + '…'
-            
-            text = f'{title}\n▶️{d["view"]}💬{d["comment"]}🤍{d["like"]}📁{d["mylist"]}🕛{d["post"]}'
-            callback = lambda: rviewer_click_callback(i)
-            card_button = ttk.Button(
-                self.rvc_frame,
-                text=text, padding=[0, 0, 0], width=630,
-                style='Ranking.TButton', compound='left',
-                image=thumbnail,
-                command=callback()
-            )
-            card_button.photo = thumbnail
-            card_button.pack()
-            rviewer_buttons.append(card_button)
-        
+        with tqdm_tk(info_dict.items()) as pbar:
+            for i, d in pbar:
+                thumbnail = url2img(d['thumbnail'])
+                thumbnail = ImageTk.PhotoImage(thumbnail.resize((63, 47)))
+                if len(d['title']) < 50:
+                    title = d['title']
+                else:
+                    title = d['title'][:50] + '…'
+
+                text = f'{title}\n▶️{d["view"]}💬{d["comment"]}🤍{d["like"]}📁{d["mylist"]}🕛{d["post"]}'
+                callback = lambda: rviewer_click_callback(i)
+                card_button = ttk.Button(
+                    self.rvc_frame,
+                    text=text, padding=[0, 0, 0], width=630,
+                    style='Ranking.TButton', compound='left',
+                    image=thumbnail,
+                    command=callback()
+                )
+                card_button.photo = thumbnail
+                card_button.pack()
+                rviewer_buttons.append(card_button)
+
+                pbar._tk_window.update()
+            pbar._tk_window.destroy()
+
         self.rv_buttons = rviewer_buttons
-    
+
     def card_view(self):
         if self.c_button:
             self.c_button.destroy()
@@ -312,13 +466,14 @@ class Application(ttk.Frame):
             self.p2_frame,
             text=text, padding=[0, 0, 0], width=60,
             style='Card.TButton', compound='left',
-            image=thumbnail
+            image=thumbnail,
+            command=lambda: webbrowser.open(d['url'])
         )
         card_button.photo = thumbnail
         card_button.grid(row=0, column=0, sticky=tk.NW)
-        
+
         self.c_button = card_button
-    
+
     def comment_view(self):
         df = self.comments_df.reset_index().sort_values('write_time')
         df = df.rename(
@@ -341,9 +496,10 @@ class Application(ttk.Frame):
             'command': 50,
             'score': 50
         }
+        notebook = self.notebook
         tree = ttk.Treeview(
-            self.p2_frame,
-            columns=list(df.columns), height=20
+            notebook.nametowidget(notebook.tabs()[1]),
+            columns=list(df.columns), height=35
         )
         for i in range(len(df)):
             values = [df.iloc[i][j] for j in range(len(df.columns))]
@@ -359,16 +515,17 @@ class Application(ttk.Frame):
         ]
 
         tree.grid(row=2, column=0)
-    
+
     def wordcloud_view(self):
+        notebook = self.notebook
         wordcloud_canvas = tk.Canvas(
-            self.p2_frame,
+            notebook.nametowidget(notebook.tabs()[2]),
             width=WORDCLOUD_W,
             height=WORDCLOUD_H
             #relief=tk.RIDGE  # 枠線を表示
             # 枠線の幅を設定
         )
-        
+
         wordcloud = Image.open('./wordcloud.png')
         wordcloud = ImageTk.PhotoImage(wordcloud)
         wordcloud_canvas.create_image(  # キャンバス上にイメージを配置
@@ -378,17 +535,15 @@ class Application(ttk.Frame):
             anchor=tk.NW
         )
         wordcloud_canvas.photo = wordcloud
-        wordcloud_canvas.grid(row=3, column=0)
-    
-    def comment_load(self):
+        wordcloud_canvas.grid(row=0, column=0)
+
+    def comment_load(self, **options):
         ninfo = NicovideoInfomation(video_url=self.card_dict['url'])
-        forks = [i for i, fork in enumerate(self.forks) if fork.get()]
-        # ninfo.load_comments(forks, hop_rate=.2, mode='exactly', check=False)
-        ninfo.load_comments(forks, mode='once', check=False)
+        ninfo.load_comments(**options)
         comments_df = ninfo.comments_df
-        
+
         self.comments_df = comments_df
-    
+
     def wordcloud_generate(self):
         df = self.comments_df[self.comments_df.index.str[0] == '0']
         comments = df.comment
@@ -405,7 +560,6 @@ class Application(ttk.Frame):
         ).generate(text)
 
         wordcloud.to_file('./wordcloud.png')
-        
 
 
 def main():
@@ -415,4 +569,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()#sm40400302
+    main()
