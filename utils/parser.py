@@ -9,15 +9,17 @@ from PIL import Image
 def fetch_ranking_info(url: str):
     source = requests.get(url)
     soup = BeautifulSoup(source.text, 'html.parser')
+    elems = soup.find_all('div', class_='NC-VideoMediaObject')
 
     info = {}
-    for i, elem in enumerate(soup.find_all('div', class_='NC-VideoMediaObject')):
+    for i, elem in enumerate(elems):
         title = elem.h2.text.lstrip()
         vid = elem.attrs['data-video-id']
         thumbnail = elem.find(
             'div', class_='NC-Thumbnail-image'
         ).attrs['data-background-image']
-        thumbnail = thumbnail
+
+        # 末尾が .M，.L はサイズが大きいので，一番小さいサイズの URL を取得
         if thumbnail.split('/')[:-1].count('.') == 2:
             thumbnail = '.'.join(thumbnail.split('.')[:-2])
         post = elem.find('span', class_='NC-VideoRegisteredAtText-text').text
@@ -34,7 +36,7 @@ def fetch_ranking_info(url: str):
             'like': like,
             'mylist': mylist
         }
-    
+
     return info if info else None
 
 
@@ -45,6 +47,7 @@ def fetch_video_info(url: str):
     video_datas = json.loads(
         soup.select_one('#js-initial-watch-data').get('data-api-data')
     )['video']
+
     title = video_datas['title']
     thumbnail = video_datas['thumbnail']['url']
     post = datetime.datetime.strptime(
@@ -54,6 +57,7 @@ def fetch_video_info(url: str):
     comment = video_datas['count']['comment']
     like = video_datas['count']['like']
     mylist = video_datas['count']['mylist']
+
     info = {
         'url': url,
         'title': title,
@@ -64,8 +68,10 @@ def fetch_video_info(url: str):
         'like': like,
         'mylist': mylist
     }
+
     return info
 
 
+# URL から Image オブジェクトを取得
 def url2img(url: str):
     return Image.open(BytesIO(requests.get(url).content))
