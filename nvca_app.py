@@ -45,7 +45,7 @@ terms_dict = {
     '全期間': 'total'
 }
 
-PANE1_W = 600
+PANE1_W = 700
 PANE2_W = 1000
 
 WORDCLOUD_W = 600
@@ -65,15 +65,15 @@ class Application(ttk.Frame):
         # tabs
         tabs_notebook = ttk.Notebook(pane2_frame)
 
-        pane1_frame.pack(side=tk.LEFT)
-        pane2_frame.pack(side=tk.LEFT, fill=tk.Y)
+        pane1_frame.pack(side=tk.LEFT, anchor=tk.N)
+        pane2_frame.pack(side=tk.LEFT, anchor=tk.N, fill=tk.Y)
 
         # style
         style = ttk.Style()
         style.theme_use('black')
         style.configure(
             'Ranking.TButton',
-            anchor="w", borderwidth=0, justify='LEFT', wraplength=330
+            anchor="w", borderwidth=0, justify='LEFT', wraplength=350
         )
         style.configure(
             'Card.TButton',
@@ -104,11 +104,10 @@ class Application(ttk.Frame):
 
         self.tabs_notebook = tabs_notebook
 
-        self.rv_buttons = None
+        self.rviewer_buttons = None
         self.card_button = None
         self.comment_treeview = None
         self.wordcloud_canvas = None
-
 
         self.pane1_set()
         self.pane2_set()
@@ -131,7 +130,7 @@ class Application(ttk.Frame):
         # === Video ID ===
         vid_var = tk.StringVar()
         vid_label = ttk.Label(panel_frame, text='動画ID')
-        vid_entry = ttk.Entry(panel_frame, textvariable=vid_var, width=35)
+        vid_entry = tk.Entry(panel_frame, textvariable=vid_var, width=35)
 
         def vid_click_callback():
             url = f'https://www.nicovideo.jp/watch/{vid_var.get()}'
@@ -147,10 +146,10 @@ class Application(ttk.Frame):
         # === Video URL ===
         vurl_var = tk.StringVar()
         vurl_label = ttk.Label(panel_frame, text='動画URL')
-        vurl_entry = ttk.Entry(panel_frame, textvariable=vurl_var, width=35)
+        vurl_entry = tk.Entry(panel_frame, textvariable=vurl_var, width=35)
 
         def vurl_click_callback():
-            url = vurl.get()
+            url = vurl_var.get()
             self.card_dict = fetch_video_info(url)
             self.card_view()
 
@@ -215,16 +214,15 @@ class Application(ttk.Frame):
             orient=tk.VERTICAL,
         )
 
-        size_y = 100 * 50
         viewer_canvas.yview_moveto(0)
         viewer_canvas['yscrollcommand'] = viewer_scrollbar.set
-        viewer_canvas.config(scrollregion=(0, 0, 0, size_y))
+        viewer_canvas.config(scrollregion=(0, 0, 0, 0))
 
-        vcwin_frame = tk.Frame(viewer_canvas)
+        cards_frame = tk.Frame(viewer_canvas)
 
         viewer_canvas.create_window(
             (0, 0),
-            window=vcwin_frame,
+            window=cards_frame,
             anchor=tk.NW,
             width=viewer_canvas.cget('width')
         )
@@ -241,7 +239,8 @@ class Application(ttk.Frame):
 
         self.genre = genre_var
         self.term = term_var
-        self.vcwin_frame = vcwin_frame
+        self.rcards_frame = cards_frame
+        self.rviewer_canvas = viewer_canvas
 
 
     def tabs_set(self):
@@ -260,154 +259,203 @@ class Application(ttk.Frame):
         notebook = self.tabs_notebook
         tab_frame = notebook.nametowidget(notebook.tabs()[0])
 
-        # --- load ---
-        load_frame = ttk.LabelFrame(
-            tab_frame,
-            text='コメント読み込み', relief=tk.RIDGE,
-            padding=[10, 10, 10, 10]
-        )
-        lopt_frame = ttk.LabelFrame(
-            load_frame, text='options', relief=tk.RIDGE,
-            padding=[10, 10, 10, 10]
-        )
+        # === load ===
+        def load_set():
+            load_frame = ttk.LabelFrame(
+                tab_frame,
+                text='コメント読み込み', relief=tk.RIDGE,
+                padding=[10, 10, 10, 10]
+            )
+            opt_frame = ttk.LabelFrame(
+                load_frame, text='options', relief=tk.RIDGE,
+                padding=[10, 10, 10, 10]
+            )
 
-        lforks_frame = ttk.LabelFrame(
-            lopt_frame,
-            text='コメントの種類', labelanchor=tk.NW,
-            padding=[5, 5, 5, 5]
-        )
-        lfork0_var = tk.BooleanVar(); lfork0_var.set(True)
-        lfork0_checkbutton = ttk.Checkbutton(
-            lforks_frame, variable=lfork0_var, text='一般コメント'
-        )
-        lfork1_var = tk.BooleanVar(); lfork1_var.set(True)
-        lfork1_checkbutton = ttk.Checkbutton(
-            lforks_frame, variable=lfork1_var, text='投稿者コメント'
-        )
-        lfork2_var = tk.BooleanVar(); lfork2_var.set(True)
-        lfork2_checkbutton = ttk.Checkbutton(
-            lforks_frame, variable=lfork2_var, text='かんたんコメント'
-        )
+            forks_frame = ttk.LabelFrame(
+                opt_frame,
+                text='コメントの種類', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            fork0_var = tk.BooleanVar(); fork0_var.set(True)
+            fork0_checkbutton = ttk.Checkbutton(
+                forks_frame, variable=fork0_var, text='一般コメント'
+            )
+            fork1_var = tk.BooleanVar(); fork1_var.set(True)
+            fork1_checkbutton = ttk.Checkbutton(
+                forks_frame, variable=fork1_var, text='投稿者コメント'
+            )
+            fork2_var = tk.BooleanVar(); fork2_var.set(True)
+            fork2_checkbutton = ttk.Checkbutton(
+                forks_frame, variable=fork2_var, text='かんたんコメント'
+            )
 
-        lmode_frame = ttk.LabelFrame(
-            lopt_frame, text='mode', labelanchor=tk.NW,
-            padding=[5, 5, 5, 5]
-        )
-        lmode_var = tk.StringVar(value='once')
-        once_radiobutton = ttk.Radiobutton(
-            lmode_frame, text='once', value='once', variable=lmode_var
-        )
-        roughly_radiobutton = ttk.Radiobutton(
-            lmode_frame, text='roughly', value='roughly', variable=lmode_var
-        )
-        exactly_radiobutton = ttk.Radiobutton(
-            lmode_frame, text='exactly', value='exactly', variable=lmode_var
-        )
+            mode_frame = ttk.LabelFrame(
+                opt_frame, text='mode', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            mode_var = tk.StringVar(value='once')
+            once_radiobutton = ttk.Radiobutton(
+                mode_frame, text='once', value='once', variable=mode_var
+            )
+            roughly_radiobutton = ttk.Radiobutton(
+                mode_frame, text='roughly', value='roughly', variable=mode_var
+            )
+            exactly_radiobutton = ttk.Radiobutton(
+                mode_frame, text='exactly', value='exactly', variable=mode_var
+            )
 
-        hoprate_frame = ttk.LabelFrame(
-            lopt_frame, text='hop rate', labelanchor=tk.NW,
-            padding=[5, 5, 5, 5]
-        )
-        hoprate_label = ttk.Label(
-            hoprate_frame,
-            text='hop rate', relief=tk.SUNKEN,
-            width=4
-        )
+            hoprate_frame = ttk.LabelFrame(
+                opt_frame, text='hop rate', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            hoprate_label = ttk.Label(
+                hoprate_frame,
+                text='hop rate', relief=tk.SUNKEN,
+                width=4
+            )
 
-        def set_hoprate_label(value):
-            hoprate_label['text'] = str(round(float(value), 2))
+            def set_hoprate_label(value):
+                hoprate_label['text'] = str(round(float(value), 2))
 
-        hoprate_val = tk.DoubleVar(value=.1)
-        hoprate_scale = ttk.Scale(
-            hoprate_frame,
-            variable=hoprate_val, command=set_hoprate_label,
-            from_=.1, to=.9,
-            orient=tk.HORIZONTAL,
-            length=130,
-        )
-        hoprate_scale.set(.2)
+            hoprate_val = tk.DoubleVar(value=.1)
+            hoprate_scale = ttk.Scale(
+                hoprate_frame,
+                variable=hoprate_val, command=set_hoprate_label,
+                from_=.1, to=.9,
+                orient=tk.HORIZONTAL,
+                length=130,
+            )
+            hoprate_scale.set(.2)
 
-        def lload_click_callback():
-            lforks = [lfork0_var, lfork1_var, lfork2_var]
-            options = {
-                'forks': [i for i, fork in enumerate(lforks) if fork.get()],
-                'mode': lmode_var.get(),
-                'hop_rate': hoprate_val.get()
-            }
+            def load_click_callback():
+                forks = [fork0_var, fork1_var, fork2_var]
+                options = {
+                    'forks': [i for i, fork in enumerate(forks) if fork.get()],
+                    'mode': mode_var.get(),
+                    'hop_rate': hoprate_val.get()
+                }
 
-            self.comment_load(**options)
-            self.comment_view()
-            self.wordcloud_generate()
-            self.wordcloud_view()
+                self.comment_load(**options)
+                self.comment_view()
+                # self.wordcloud_generate()
+                # self.wordcloud_view()
 
-        lbuttons_frame = ttk.Frame(load_frame, padding=[10, 10, 10, 10])
+                for button in self.ebuttons_frame.winfo_children():
+                    button['state'] = 'enable'
 
-        lload_button = ttk.Button(
-            lbuttons_frame,
-            text='load', command=lload_click_callback,
-            padding=[0, 0, 0], width=20,
+            buttons_frame = ttk.Frame(load_frame, padding=[10, 10, 10, 10])
 
-        )
+            load_button = ttk.Button(
+                buttons_frame,
+                text='load', command=load_click_callback,
+                padding=[0, 0, 0], width=20,
 
-        load_frame.grid(row=0, column=0, padx=10, pady=10)
+            )
 
-        lopt_frame.grid(row=0, column=0, padx=10, pady=10)
+            load_frame.grid(row=0, column=0, padx=10, pady=10)
 
-        lforks_frame.grid(row=0, column=0)
-        lfork0_checkbutton.grid(row=0, column=0)
-        lfork1_checkbutton.grid(row=0, column=1)
-        lfork2_checkbutton.grid(row=0, column=2)
+            opt_frame.grid(row=0, column=0, padx=10, pady=10)
 
-        lmode_frame.grid(row=1, column=0, sticky=tk.W)
-        once_radiobutton.grid(row=0, column=0)
-        roughly_radiobutton.grid(row=0, column=1)
-        exactly_radiobutton.grid(row=0, column=2)
+            forks_frame.grid(row=0, column=0)
+            fork0_checkbutton.grid(row=0, column=0)
+            fork1_checkbutton.grid(row=0, column=1)
+            fork2_checkbutton.grid(row=0, column=2)
 
-        hoprate_frame.grid(row=2, column=0, sticky=tk.W)
-        hoprate_scale.grid(row=0, column=0)
-        hoprate_label.grid(row=0, column=1)
+            mode_frame.grid(row=1, column=0, sticky=tk.W)
+            once_radiobutton.grid(row=0, column=0)
+            roughly_radiobutton.grid(row=0, column=1)
+            exactly_radiobutton.grid(row=0, column=2)
 
-        lbuttons_frame.grid(row=0, column=1, padx=10, pady=10)
-        lload_button.grid(row=0, column=0)
+            hoprate_frame.grid(row=2, column=0, sticky=tk.W)
+            hoprate_scale.grid(row=0, column=0)
+            hoprate_label.grid(row=0, column=1)
 
-        # --- extract ---
-        extract_frame = ttk.LabelFrame(
-            tab_frame,
-            text='コメント抽出', relief=tk.RIDGE, padding=[10, 10, 10, 10]
-        )
-        eopt_frame = ttk.LabelFrame(
-            extract_frame, text='options', relief=tk.RIDGE,
-            padding=[10, 10, 10, 10]
-        )
-        eforks_frame = ttk.LabelFrame(
-            eopt_frame, text='コメントの種類', labelanchor=tk.NW,
-            padding=[5, 5, 5, 5]
-        )
-        efork0_var = tk.BooleanVar(); efork0_var.set(True)
-        efork0_checkbutton = ttk.Checkbutton(
-            eforks_frame, variable=efork0_var, text='一般コメント'
-        )
-        efork1_var = tk.BooleanVar(); efork1_var.set(True)
-        efork1_checkbutton = ttk.Checkbutton(
-            eforks_frame, variable=efork1_var, text='投稿者コメント'
-        )
-        efork2_var = tk.BooleanVar(); efork2_var.set(True)
-        efork2_checkbutton = ttk.Checkbutton(
-            eforks_frame, variable=efork2_var, text='かんたんコメント'
-        )
+            buttons_frame.grid(row=0, column=1, padx=10, pady=10)
+            load_button.grid(row=0, column=0)
 
-        extract_frame.grid(row=1, column=0, padx=10, pady=10)
+        load_set()
 
-        eopt_frame.grid(row=0, column=0)
+        # === extract ===
+        def extract_set():
+            extract_frame = ttk.LabelFrame(
+                tab_frame,
+                text='コメント抽出', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+            )
+            opt_frame = ttk.LabelFrame(
+                extract_frame, text='options', relief=tk.RIDGE,
+                padding=[10, 10, 10, 10]
+            )
+            forks_frame = ttk.LabelFrame(
+                opt_frame, text='コメントの種類', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            fork0_var = tk.BooleanVar(); fork0_var.set(True)
+            fork0_checkbutton = ttk.Checkbutton(
+                forks_frame, variable=fork0_var, text='一般コメント'
+            )
+            fork1_var = tk.BooleanVar(); fork1_var.set(True)
+            fork1_checkbutton = ttk.Checkbutton(
+                forks_frame, variable=fork1_var, text='投稿者コメント'
+            )
+            fork2_var = tk.BooleanVar(); fork2_var.set(True)
+            fork2_checkbutton = ttk.Checkbutton(
+                forks_frame, variable=fork2_var, text='かんたんコメント'
+            )
 
-        eforks_frame.grid(row=0, column=0)
-        efork0_checkbutton.grid(row=0, column=0)
-        efork1_checkbutton.grid(row=0, column=1)
-        efork2_checkbutton.grid(row=0, column=2)
+            def make_opt_dict():
+                forks = [fork0_var.get(), fork1_var.get(), fork2_var.get()]
+                opt_dict = {
+                    'forks': [i for i, fork in enumerate(lforks) if fork.get()],
+                    'user_id': None,
+                    'write_time': (None, None),
+                    'video_time': (None, None),
+                    'position': None,
+                    'size': None,
+                    'color': None,
+                    'score': (None, None)
+                }
+                return opt_dict
+
+            def select_click_callback():
+                pass
+
+            def reset_click_callback():
+                self.tmp_df = self.comments_df.copy()
+
+            buttons_frame = ttk.Frame(extract_frame, padding=[10, 10, 10, 10])
+
+            select_button = ttk.Button(
+                buttons_frame,
+                text='select', command=select_click_callback,
+                padding=[0, 0, 0], width=20,
+            )
+            reset_button = ttk.Button(
+                buttons_frame,
+                text='reset', command=reset_click_callback,
+                padding=[0, 0, 0], width=20,
+            )
+
+            select_button['state'] = reset_button['state'] = 'disable'
+
+            extract_frame.grid(row=1, column=0, padx=10, pady=10)
+
+            opt_frame.grid(row=0, column=0)
+
+            forks_frame.grid(row=0, column=0)
+            fork0_checkbutton.grid(row=0, column=0)
+            fork1_checkbutton.grid(row=0, column=1)
+            fork2_checkbutton.grid(row=0, column=2)
+
+            buttons_frame.grid(row=0, column=1, padx=10, pady=10)
+            select_button.pack(pady=10)
+            reset_button.pack(pady=10)
+
+            self.ebuttons_frame = buttons_frame
+
+        extract_set()
 
     def ranking_view(self):
-        if self.rv_buttons:
-            _ = [button.destroy() for button in self.rv_buttons]
+        _ = [button.destroy() for button in self.rcards_frame.winfo_children()]
 
         genre_key = genres_dict[str(self.genre.get())]
         term_key = terms_dict[str(self.term.get())]
@@ -418,11 +466,10 @@ class Application(ttk.Frame):
         def viewer_click_callback(i):
             def x():
                 self.card_dict = self.ranking_info[(i, )[0]]
-                _ = self.card_view()
+                self.card_view()
             return x
 
         video_text = '{title}\n▶️{view}💬{comment}💕{like}🕘{post}'
-        rviewer_buttons = []
         with tqdm_tk(info_dict.items()) as pbar:
             for i, d in pbar:
                 thumbnail = url2img(d['thumbnail'])
@@ -432,9 +479,8 @@ class Application(ttk.Frame):
                 else:
                     title = d['title'][:50] + '…'
 
-                callback = lambda: viewer_click_callback(i)
                 card_button = ttk.Button(
-                    self.vcwin_frame,
+                    self.rcards_frame,
                     text=video_text.format(**{
                         'title': title,
                         'view': d['view'],
@@ -445,19 +491,17 @@ class Application(ttk.Frame):
                     padding=[0, 0, 0], width=630,
                     style='Ranking.TButton', compound='left',
                     image=thumbnail,
-                    command=callback()
+                    command=viewer_click_callback(i)
                 )
                 card_button.photo = thumbnail
                 card_button.pack()
-                rviewer_buttons.append(card_button)
+                self.rviewer_canvas.config(scrollregion=(0, 0, 0, (i+1)*49.5))
 
                 # !重要! これがないとプログレスバーが描画されない
                 # ループが終わるまで描画の処理が先送りになるため？
                 pbar._tk_window.update()
             # 役目を終えたプログレスバーウィンドウを虚空に帰す
             pbar._tk_window.destroy()
-
-        self.rv_buttons = rviewer_buttons
 
     def card_view(self):
         if self.card_button:
@@ -471,7 +515,7 @@ class Application(ttk.Frame):
 
         video_text = '{title}\n▶️{view}💬{comment}💕{like}🕘{post}'
         thumbnail = url2img(d['thumbnail'])
-        thumbnail = ImageTk.PhotoImage(thumbnail.resize((93, 70)))
+        thumbnail = ImageTk.PhotoImage(thumbnail.resize((102, 77)))
 
         card_button = ttk.Button(
             self.pane2_frame,
@@ -582,6 +626,7 @@ class Application(ttk.Frame):
         comments_df = ninfo.comments_df
 
         self.comments_df = comments_df
+        self.tmp_df = comments_df.copy()
 
     def wordcloud_generate(self):
         df = self.comments_df[self.comments_df.index.str[0] == '0']
