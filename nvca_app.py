@@ -73,12 +73,33 @@ class Application(ttk.Frame):
         style.theme_use('black')
         style.configure(
             'Ranking.TButton',
-            anchor="w", borderwidth=0, justify='LEFT', wraplength=350
+            anchor='w', borderwidth=0, justify='LEFT', wraplength=350
         )
         style.configure(
             'Card.TButton',
-            anchor="w", borderwidth=0, justify='LEFT', wraplength=550
+            anchor='w', borderwidth=0, justify='LEFT', wraplength=550
         )
+        style.configure('White.TCheckbutton',   foreground='#FFFFFF')
+        style.configure('Red.TCheckbutton',     foreground='#FF0000')
+        style.configure('Pink.TCheckbutton',    foreground='#FF8080')
+        style.configure('Orange.TCheckbutton',  foreground='#FFC000')
+        style.configure('Yellow.TCheckbutton',  foreground='#FFFF00')
+        style.configure('Green.TCheckbutton',   foreground='#00FF00')
+        style.configure('Cyan.TCheckbutton',    foreground='#00FFFF')
+        style.configure('Blue.TCheckbutton',    foreground='#0000FF')
+        style.configure('Purple.TCheckbutton',  foreground='#C000FF')
+        style.configure('Black.TCheckbutton',   foreground='#000000')
+        style.configure('White2.TCheckbutton',  foreground='#CCCC99')
+        style.configure('Red2.TCheckbutton',    foreground='#CC0033')
+        style.configure('Pink2.TCheckbutton',   foreground='#FF33CC')
+        style.configure('Orange2.TCheckbutton', foreground='#FF6600')
+        style.configure('Yellow2.TCheckbutton', foreground='#999900')
+        style.configure('Green2.TCheckbutton',  foreground='#00CC66')
+        style.configure('Cyan2.TCheckbutton',   foreground='#00CCCC')
+        style.configure('Blue2.TCheckbutton',   foreground='#3399FF')
+        style.configure('Purple2.TCheckbutton', foreground='#6633CC')
+        style.configure('Black2.TCheckbutton',  foreground='#666666')
+
 
         # insrtance var
         # dummy
@@ -356,17 +377,17 @@ class Application(ttk.Frame):
 
             opt_frame.grid(row=0, column=0, padx=10, pady=10)
 
-            forks_frame.grid(row=0, column=0)
-            fork0_checkbutton.grid(row=0, column=0)
-            fork1_checkbutton.grid(row=0, column=1)
-            fork2_checkbutton.grid(row=0, column=2)
+            forks_frame.grid(row=0, column=0, sticky=tk.EW)
+            fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            mode_frame.grid(row=1, column=0, sticky=tk.W)
-            once_radiobutton.grid(row=0, column=0)
-            roughly_radiobutton.grid(row=0, column=1)
-            exactly_radiobutton.grid(row=0, column=2)
+            mode_frame.grid(row=1, column=0, sticky=tk.EW)
+            once_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            roughly_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            exactly_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            hoprate_frame.grid(row=2, column=0, sticky=tk.W)
+            hoprate_frame.grid(row=2, column=0, sticky=tk.EW)
             hoprate_scale.grid(row=0, column=0)
             hoprate_label.grid(row=0, column=1)
 
@@ -381,10 +402,12 @@ class Application(ttk.Frame):
                 tab_frame,
                 text='コメント抽出', relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
+
             opt_frame = ttk.LabelFrame(
                 extract_frame, text='options', relief=tk.RIDGE,
                 padding=[10, 10, 10, 10]
             )
+
             forks_frame = ttk.LabelFrame(
                 opt_frame, text='コメントの種類', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
@@ -400,6 +423,141 @@ class Application(ttk.Frame):
             fork2_var = tk.BooleanVar(); fork2_var.set(True)
             fork2_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork2_var, text='かんたんコメント'
+            )
+
+            comment_frame = ttk.LabelFrame(
+                opt_frame, text='コメント', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            comment_var = tk.StringVar()
+            comment_entry = tk.Entry(comment_frame, textvariable=comment_var)
+
+            uid_frame = ttk.LabelFrame(
+                opt_frame, text='ユーザーID', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            uid_var = tk.StringVar()
+            uid_entry = tk.Entry(uid_frame, textvariable=uid_var)
+
+            position_frame = ttk.LabelFrame(
+                opt_frame, text='コメントの位置 (デフォルト：中)', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            ue_var = tk.BooleanVar(); ue_var.set(True)
+            ue_checkbutton = ttk.Checkbutton(
+                position_frame, variable=ue_var, text='上'
+            )
+            naka_var = tk.BooleanVar(); naka_var.set(True)
+            naka_checkbutton = ttk.Checkbutton(
+                position_frame, variable=naka_var, text='中'
+            )
+            shita_var = tk.BooleanVar(); shita_var.set(True)
+            shita_checkbutton = ttk.Checkbutton(
+                position_frame, variable=shita_var, text='下'
+            )
+
+            size_frame = ttk.LabelFrame(
+                opt_frame, text='コメントの大きさ (デフォルト：中)', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            big_var = tk.BooleanVar(); big_var.set(True)
+            big_checkbutton = ttk.Checkbutton(
+                size_frame, variable=big_var, text='大'
+            )
+            medium_var = tk.BooleanVar(); medium_var.set(True)
+            medium_checkbutton = ttk.Checkbutton(
+                size_frame, variable=medium_var, text='中'
+            )
+            small_var = tk.BooleanVar(); small_var.set(True)
+            small_checkbutton = ttk.Checkbutton(
+                size_frame, variable=small_var, text='小'
+            )
+
+            color_frame = ttk.LabelFrame(
+                opt_frame, text='コメントの色', labelanchor=tk.NW,
+                padding=[5, 5, 5, 5]
+            )
+            general_frame = ttk.Frame(color_frame)
+            white_var = tk.BooleanVar(); white_var.set(True)
+            white_checkbutton = ttk.Checkbutton(
+                general_frame, variable=white_var, text='■', style='White.TCheckbutton'
+            )
+            red_var = tk.BooleanVar(); red_var.set(True)
+            red_checkbutton = ttk.Checkbutton(
+                general_frame, variable=red_var, text='■', style='Red.TCheckbutton'
+            )
+            pink_var = tk.BooleanVar(); pink_var.set(True)
+            pink_checkbutton = ttk.Checkbutton(
+                general_frame, variable=pink_var, text='■', style='Pink.TCheckbutton'
+            )
+            orange_var = tk.BooleanVar(); orange_var.set(True)
+            orange_checkbutton = ttk.Checkbutton(
+                general_frame, variable=orange_var, text='■', style='Orange.TCheckbutton'
+            )
+            yellow_var = tk.BooleanVar(); yellow_var.set(True)
+            yellow_checkbutton = ttk.Checkbutton(
+                general_frame, variable=yellow_var, text='■', style='Yellow.TCheckbutton'
+            )
+            green_var = tk.BooleanVar(); green_var.set(True)
+            green_checkbutton = ttk.Checkbutton(
+                general_frame, variable=green_var, text='■', style='Green.TCheckbutton'
+            )
+            cyan_var = tk.BooleanVar(); cyan_var.set(True)
+            cyan_checkbutton = ttk.Checkbutton(
+                general_frame, variable=cyan_var, text='■', style='Cyan.TCheckbutton'
+            )
+            blue_var = tk.BooleanVar(); blue_var.set(True)
+            blue_checkbutton = ttk.Checkbutton(
+                general_frame, variable=blue_var, text='■', style='Blue.TCheckbutton'
+            )
+            purple_var = tk.BooleanVar(); purple_var.set(True)
+            purple_checkbutton = ttk.Checkbutton(
+                general_frame, variable=purple_var, text='■', style='Purple.TCheckbutton'
+            )
+            black_var = tk.BooleanVar(); black_var.set(True)
+            black_checkbutton = ttk.Checkbutton(
+                general_frame, variable=black_var, text='■', style='Black.TCheckbutton'
+            )
+            premium_frame = ttk.Frame(color_frame)
+            white2_var = tk.BooleanVar(); white2_var.set(True)
+            white2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=white2_var, text='■', style='White2.TCheckbutton'
+            )
+            red2_var = tk.BooleanVar(); red2_var.set(True)
+            red2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=red2_var, text='■', style='Red2.TCheckbutton'
+            )
+            pink2_var = tk.BooleanVar(); pink2_var.set(True)
+            pink2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=pink2_var, text='■', style='Pink2.TCheckbutton'
+            )
+            orange2_var = tk.BooleanVar(); orange2_var.set(True)
+            orange2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=orange2_var, text='■', style='Orange2.TCheckbutton'
+            )
+            yellow2_var = tk.BooleanVar(); yellow2_var.set(True)
+            yellow2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=yellow2_var, text='■', style='Yellow2.TCheckbutton'
+            )
+            green2_var = tk.BooleanVar(); green2_var.set(True)
+            green2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=green2_var, text='■', style='Green2.TCheckbutton'
+            )
+            cyan2_var = tk.BooleanVar(); cyan2_var.set(True)
+            cyan2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=cyan2_var, text='■', style='Cyan2.TCheckbutton'
+            )
+            blue2_var = tk.BooleanVar(); blue2_var.set(True)
+            blue2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=blue2_var, text='■', style='Blue2.TCheckbutton'
+            )
+            purple2_var = tk.BooleanVar(); purple2_var.set(True)
+            purple2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=purple2_var, text='■', style='Purple2.TCheckbutton'
+            )
+            black2_var = tk.BooleanVar(); black2_var.set(True)
+            black2_checkbutton = ttk.Checkbutton(
+                premium_frame, variable=black2_var, text='■', style='Black2.TCheckbutton'
             )
 
             def make_opt_dict():
@@ -420,7 +578,7 @@ class Application(ttk.Frame):
                 pass
 
             def reset_click_callback():
-                self.tmp_df = self.comments_df.copy()
+                self.comments_df = self.org_df.copy()
 
             buttons_frame = ttk.Frame(extract_frame, padding=[10, 10, 10, 10])
 
@@ -441,10 +599,44 @@ class Application(ttk.Frame):
 
             opt_frame.grid(row=0, column=0)
 
-            forks_frame.grid(row=0, column=0)
-            fork0_checkbutton.grid(row=0, column=0)
-            fork1_checkbutton.grid(row=0, column=1)
-            fork2_checkbutton.grid(row=0, column=2)
+            forks_frame.grid(row=0, column=0, sticky=tk.EW)
+            fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            comment_frame.grid(row=1, column=0, sticky=tk.EW)
+            comment_entry.grid(row=0, column=0)
+
+            uid_frame.grid(row=2, column=0, sticky=tk.EW)
+            uid_entry.grid(row=0, column=0)
+
+            position_frame.grid(row=3, column=0, sticky=tk.EW)
+            ue_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            naka_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            shita_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            size_frame.grid(row=4, column=0, sticky=tk.EW)
+            big_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            medium_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            small_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            color_frame.grid(row=5, column=0, sticky=tk.EW)
+            general_frame.grid(row=0, column=0, sticky=tk.EW)
+            white_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            red_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            pink_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            orange_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            yellow_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            purple_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            black_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            premium_frame.grid(row=1, column=0, sticky=tk.EW)
+            white2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            red2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            pink2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            orange2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            yellow2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            purple2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            black2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
             buttons_frame.grid(row=0, column=1, padx=10, pady=10)
             select_button.pack(pady=10)
@@ -626,7 +818,7 @@ class Application(ttk.Frame):
         comments_df = ninfo.comments_df
 
         self.comments_df = comments_df
-        self.tmp_df = comments_df.copy()
+        self.org_df = comments_df.copy()
 
     def wordcloud_generate(self):
         df = self.comments_df[self.comments_df.index.str[0] == '0']

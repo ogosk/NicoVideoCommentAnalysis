@@ -153,6 +153,18 @@ class NicovideoInfomation():
                         if v:
                             com[k] = cmds.pop(cmds.index(v.pop()))
 
+                    creplace_dict = {
+                        'niconicowhite': 'white2',
+                        'truered': 'red2',
+                        'passionorange': 'orange2',
+                        'madyellow': 'yellow2',
+                        'elementalgreen': 'green2',
+                        'marineblue': 'blue2',
+                        'nobleviolet': 'purple2'
+                    }
+                    if com['color'] in creplace_dict:
+                        com['color'] = creplace_dict[com['color']]
+
                     com['mail'] = ' '.join(cmds)
 
                 comment_id = f'{com["fork"]}-{com["no"]}'
