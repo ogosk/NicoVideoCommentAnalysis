@@ -130,7 +130,6 @@ class Application(ttk.Frame):
         self.rviewer_buttons = None
         self.card_button = None
         self.comment_treeview = None
-        self.wordcloud_canvas = None
 
         self.pane1_set()
         self.pane2_set()
@@ -142,6 +141,7 @@ class Application(ttk.Frame):
     def pane2_set(self):
         self.tabs_set()
         self.control_tab_set()
+        self.wordcloud_tab_set()
 
         self.card_view()
         self.comment_view()
@@ -273,7 +273,7 @@ class Application(ttk.Frame):
 
         self.tabs_notebook.add(control_tab, text='読み込み/抽出')
         self.tabs_notebook.add(comment_tab, text='コメント', state='disabled')
-        self.tabs_notebook.add(wordcloud_tab, text='WordCloud')
+        self.tabs_notebook.add(wordcloud_tab, text='WordCloud', state='disabled')
 
         self.tabs_notebook.grid(row=1, column=0)
 
@@ -347,11 +347,11 @@ class Application(ttk.Frame):
             hoprate_scale = ttk.Scale(
                 hoprate_frame,
                 variable=hoprate_val, command=set_hoprate_label,
-                from_=.1, to=.9,
+                from_=0, to=.9,
                 orient=tk.HORIZONTAL,
                 length=130,
             )
-            hoprate_scale.set(.2)
+            hoprate_scale.set(.1)
 
             def load_click_callback():
                 forks = [fork0_var, fork1_var, fork2_var]
@@ -361,6 +361,7 @@ class Application(ttk.Frame):
                     'hop_rate': hoprate_val.get()
                 }
                 self.tabs_notebook.tab(tab_id=tabs_dict['comment'], state='normal')
+                self.tabs_notebook.tab(tab_id=tabs_dict['wordcloud'], state='normal')
 
                 self.comment_load(**options)
                 self.comment_view()
@@ -535,7 +536,7 @@ class Application(ttk.Frame):
                 df = df[df['size'].isin(opt_dict['size'])]
                 df = df[df.color.isin(opt_dict['color'])]
 
-                self.comments_df = df
+                self.comments_df = df.sort_values('write_time')
 
                 self.comment_view()
 
@@ -601,6 +602,35 @@ class Application(ttk.Frame):
             self.ebuttons_frame = buttons_frame
 
         extract_set()
+
+    def wordcloud_tab_set(self):
+        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
+        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['wordcloud']])
+
+        def plot_click_callback():
+            self.wordcloud_generate()
+            self.wordcloud_view()
+
+        note_label = ttk.Label(
+            tab_frame,
+            text='読み込みや抽出の際に「かんたんコメント」を除去しておくのがおすすめです'
+        )
+
+        plot_button = ttk.Button(
+            tab_frame, text='plot', command=plot_click_callback,
+        )
+
+        wordcloud_canvas = tk.Canvas(
+            tab_frame,
+            width=WORDCLOUD_W,
+            height=WORDCLOUD_H
+        )
+
+        note_label.pack()
+        plot_button.pack()
+        wordcloud_canvas.pack()
+
+        self.wordcloud_canvas = wordcloud_canvas
 
     def ranking_view(self):
         _ = [button.destroy() for button in self.rcards_frame.winfo_children()]
@@ -777,34 +807,22 @@ class Application(ttk.Frame):
         self.comment_treeview = comment_treeview
 
     def wordcloud_view(self):
-        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
-        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['wordcloud']])
-
-        wordcloud_canvas = tk.Canvas(
-            tab_frame,
-            width=WORDCLOUD_W,
-            height=WORDCLOUD_H
-        )
+        wordcloud_canvas = self.wordcloud_canvas
 
         wordcloud = Image.open('./wordcloud.png')
         wordcloud = ImageTk.PhotoImage(wordcloud)
         wordcloud_canvas.create_image(0, 0, image=wordcloud, anchor=tk.NW)
         wordcloud_canvas.photo = wordcloud
-        wordcloud_canvas.grid(row=0, column=0)
-
-        self.wordcloud_canvas = wordcloud_canvas
 
     def comment_load(self, **options):
         self.ninfo.load_comments(**options)
-        comments_df = self.ninfo.comments_df
 
-        self.comments_df = comments_df
-        self.org_df = comments_df.copy()
+        self.comments_df = self.ninfo.comments_df.copy()
+        self.org_df = self.comments_df.copy()
 
     def wordcloud_generate(self):
-        df = self.comments_df[self.comments_df.index.str[0] == '0']
-        comments = df.comment
-        results = analyze_comments(comments, tokenizer='janome')
+        df = self.comments_df
+        results = analyze_comments(df.comment, tokenizer='janome')
         text = ' '.join(results)
 
         font_path = '/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'
