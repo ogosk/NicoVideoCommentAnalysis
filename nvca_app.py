@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import ttkthemes
+import numpy as np
 import pandas as pd
 import webbrowser
 from PIL import Image, ImageTk
@@ -48,6 +49,8 @@ terms_dict = {
 PANE1_W = 700
 PANE2_W = 1000
 
+COMMENT_LINES = 35
+
 WORDCLOUD_W = 600
 WORDCLOUD_H = 350
 
@@ -59,9 +62,9 @@ class Application(ttk.Frame):
         self.master.title("NicoVideoCommentAnalysis")
 
         # pane1
-        pane1_frame = ttk.Frame(self.master, width=PANE1_W)
+        pane1_frame = ttk.Frame(self.master)
         # pane2
-        pane2_frame = ttk.Frame(self.master, width=PANE2_W)
+        pane2_frame = ttk.Frame(self.master)
         # tabs
         tabs_notebook = ttk.Notebook(pane2_frame)
 
@@ -99,7 +102,6 @@ class Application(ttk.Frame):
         style.configure('Blue2.TCheckbutton',   foreground='#3399FF')
         style.configure('Purple2.TCheckbutton', foreground='#6633CC')
         style.configure('Black2.TCheckbutton',  foreground='#666666')
-
 
         # insrtance var
         # dummy
@@ -227,7 +229,7 @@ class Application(ttk.Frame):
         viewer_frame = ttk.Frame(panel_frame)
         viewer_canvas = tk.Canvas(
             viewer_frame,
-            width=420, height=800, bd=0
+            width=420, height=750#int(845/42*(COMMENT_LINES+2))# 30->750 40->845
         )
         viewer_scrollbar = ttk.Scrollbar(
             viewer_frame,
@@ -270,15 +272,18 @@ class Application(ttk.Frame):
         wordcloud_tab = ttk.Frame(self.tabs_notebook)
 
         self.tabs_notebook.add(control_tab, text='読み込み/抽出')
-        self.tabs_notebook.add(comment_tab, text='コメント')
+        self.tabs_notebook.add(comment_tab, text='コメント', state='disabled')
         self.tabs_notebook.add(wordcloud_tab, text='WordCloud')
 
         self.tabs_notebook.grid(row=1, column=0)
 
+        self.tabs_dict = {
+            'control': 0, 'comment': 1, 'wordcloud': 2
+        }
 
     def control_tab_set(self):
-        notebook = self.tabs_notebook
-        tab_frame = notebook.nametowidget(notebook.tabs()[0])
+        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
+        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['control']])
 
         # === load ===
         def load_set():
@@ -355,6 +360,7 @@ class Application(ttk.Frame):
                     'mode': mode_var.get(),
                     'hop_rate': hoprate_val.get()
                 }
+                self.tabs_notebook.tab(tab_id=tabs_dict['comment'], state='normal')
 
                 self.comment_load(**options)
                 self.comment_view()
@@ -373,23 +379,23 @@ class Application(ttk.Frame):
 
             )
 
-            load_frame.grid(row=0, column=0, padx=10, pady=10)
+            load_frame.grid(row=0, padx=10, pady=10)
 
-            opt_frame.grid(row=0, column=0, padx=10, pady=10)
+            opt_frame.grid(row=0, column=0)
 
-            forks_frame.grid(row=0, column=0, sticky=tk.EW)
+            forks_frame.grid(row=0, sticky=tk.EW)
             fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            mode_frame.grid(row=1, column=0, sticky=tk.EW)
+            mode_frame.grid(row=1, sticky=tk.EW)
             once_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             roughly_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             exactly_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            hoprate_frame.grid(row=2, column=0, sticky=tk.EW)
-            hoprate_scale.grid(row=0, column=0)
-            hoprate_label.grid(row=0, column=1)
+            hoprate_frame.grid(row=2, sticky=tk.EW)
+            hoprate_scale.pack(side=tk.LEFT)
+            hoprate_label.pack(side=tk.LEFT)
 
             buttons_frame.grid(row=0, column=1, padx=10, pady=10)
             load_button.grid(row=0, column=0)
@@ -433,7 +439,7 @@ class Application(ttk.Frame):
             comment_entry = tk.Entry(comment_frame, textvariable=comment_var)
 
             uid_frame = ttk.LabelFrame(
-                opt_frame, text='ユーザーID', labelanchor=tk.NW,
+                opt_frame, text='ユーザーID (,区切りで複数入力可)', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             uid_var = tk.StringVar()
@@ -443,142 +449,100 @@ class Application(ttk.Frame):
                 opt_frame, text='コメントの位置 (デフォルト：中)', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
-            ue_var = tk.BooleanVar(); ue_var.set(True)
-            ue_checkbutton = ttk.Checkbutton(
-                position_frame, variable=ue_var, text='上'
-            )
-            naka_var = tk.BooleanVar(); naka_var.set(True)
-            naka_checkbutton = ttk.Checkbutton(
-                position_frame, variable=naka_var, text='中'
-            )
-            shita_var = tk.BooleanVar(); shita_var.set(True)
-            shita_checkbutton = ttk.Checkbutton(
-                position_frame, variable=shita_var, text='下'
-            )
+            positions = ['ue', 'naka', 'shita']
+            positions_dict = {
+                p: {
+                    'var': var,
+                    'checkbutton': ttk.Checkbutton(
+                        position_frame,
+                        variable=var,
+                        text={'ue': '上', 'naka': '中', 'shita': '下'}[p],
+                    )
+                } for p, var in [(p, tk.BooleanVar(value=True)) for p in positions]
+            }
 
             size_frame = ttk.LabelFrame(
                 opt_frame, text='コメントの大きさ (デフォルト：中)', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
-            big_var = tk.BooleanVar(); big_var.set(True)
-            big_checkbutton = ttk.Checkbutton(
-                size_frame, variable=big_var, text='大'
-            )
-            medium_var = tk.BooleanVar(); medium_var.set(True)
-            medium_checkbutton = ttk.Checkbutton(
-                size_frame, variable=medium_var, text='中'
-            )
-            small_var = tk.BooleanVar(); small_var.set(True)
-            small_checkbutton = ttk.Checkbutton(
-                size_frame, variable=small_var, text='小'
-            )
+            sizes = ['big', 'medium', 'small']
+            sizes_dict = {
+                s: {
+                    'var': var,
+                    'checkbutton': ttk.Checkbutton(
+                        size_frame,
+                        variable=var,
+                        text={'big': '大', 'medium': '中', 'small': '小'}[s],
+                    )
+                } for s, var in [(s, tk.BooleanVar(value=True)) for s in sizes]
+            }
 
             color_frame = ttk.LabelFrame(
                 opt_frame, text='コメントの色', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
-            general_frame = ttk.Frame(color_frame)
-            white_var = tk.BooleanVar(); white_var.set(True)
-            white_checkbutton = ttk.Checkbutton(
-                general_frame, variable=white_var, text='■', style='White.TCheckbutton'
+            general_frame = ttk.LabelFrame(
+                color_frame, text='全ユーザー', labelanchor=tk.NW
             )
-            red_var = tk.BooleanVar(); red_var.set(True)
-            red_checkbutton = ttk.Checkbutton(
-                general_frame, variable=red_var, text='■', style='Red.TCheckbutton'
+            premium_frame = ttk.LabelFrame(
+                color_frame, text='プレミアム会員限定', labelanchor=tk.NW
             )
-            pink_var = tk.BooleanVar(); pink_var.set(True)
-            pink_checkbutton = ttk.Checkbutton(
-                general_frame, variable=pink_var, text='■', style='Pink.TCheckbutton'
-            )
-            orange_var = tk.BooleanVar(); orange_var.set(True)
-            orange_checkbutton = ttk.Checkbutton(
-                general_frame, variable=orange_var, text='■', style='Orange.TCheckbutton'
-            )
-            yellow_var = tk.BooleanVar(); yellow_var.set(True)
-            yellow_checkbutton = ttk.Checkbutton(
-                general_frame, variable=yellow_var, text='■', style='Yellow.TCheckbutton'
-            )
-            green_var = tk.BooleanVar(); green_var.set(True)
-            green_checkbutton = ttk.Checkbutton(
-                general_frame, variable=green_var, text='■', style='Green.TCheckbutton'
-            )
-            cyan_var = tk.BooleanVar(); cyan_var.set(True)
-            cyan_checkbutton = ttk.Checkbutton(
-                general_frame, variable=cyan_var, text='■', style='Cyan.TCheckbutton'
-            )
-            blue_var = tk.BooleanVar(); blue_var.set(True)
-            blue_checkbutton = ttk.Checkbutton(
-                general_frame, variable=blue_var, text='■', style='Blue.TCheckbutton'
-            )
-            purple_var = tk.BooleanVar(); purple_var.set(True)
-            purple_checkbutton = ttk.Checkbutton(
-                general_frame, variable=purple_var, text='■', style='Purple.TCheckbutton'
-            )
-            black_var = tk.BooleanVar(); black_var.set(True)
-            black_checkbutton = ttk.Checkbutton(
-                general_frame, variable=black_var, text='■', style='Black.TCheckbutton'
-            )
-            premium_frame = ttk.Frame(color_frame)
-            white2_var = tk.BooleanVar(); white2_var.set(True)
-            white2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=white2_var, text='■', style='White2.TCheckbutton'
-            )
-            red2_var = tk.BooleanVar(); red2_var.set(True)
-            red2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=red2_var, text='■', style='Red2.TCheckbutton'
-            )
-            pink2_var = tk.BooleanVar(); pink2_var.set(True)
-            pink2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=pink2_var, text='■', style='Pink2.TCheckbutton'
-            )
-            orange2_var = tk.BooleanVar(); orange2_var.set(True)
-            orange2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=orange2_var, text='■', style='Orange2.TCheckbutton'
-            )
-            yellow2_var = tk.BooleanVar(); yellow2_var.set(True)
-            yellow2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=yellow2_var, text='■', style='Yellow2.TCheckbutton'
-            )
-            green2_var = tk.BooleanVar(); green2_var.set(True)
-            green2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=green2_var, text='■', style='Green2.TCheckbutton'
-            )
-            cyan2_var = tk.BooleanVar(); cyan2_var.set(True)
-            cyan2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=cyan2_var, text='■', style='Cyan2.TCheckbutton'
-            )
-            blue2_var = tk.BooleanVar(); blue2_var.set(True)
-            blue2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=blue2_var, text='■', style='Blue2.TCheckbutton'
-            )
-            purple2_var = tk.BooleanVar(); purple2_var.set(True)
-            purple2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=purple2_var, text='■', style='Purple2.TCheckbutton'
-            )
-            black2_var = tk.BooleanVar(); black2_var.set(True)
-            black2_checkbutton = ttk.Checkbutton(
-                premium_frame, variable=black2_var, text='■', style='Black2.TCheckbutton'
-            )
+            gcolors = [
+                'white', 'red', 'pink', 'orange', 'yellow', 'green',
+                'cyan', 'blue', 'purple', 'black'
+            ]
+            pcolors = [c+'2' for c in gcolors]
+            colors = gcolors + pcolors
+            colors_dict = {
+                c: {
+                    'var': var,
+                    'checkbutton': ttk.Checkbutton(
+                        general_frame if c in gcolors else premium_frame,
+                        variable=var,
+                        text='■',
+                        style=f'{c[0].upper()+c[1:]}.TCheckbutton'
+                    )
+                } for c, var in [(c, tk.BooleanVar(value=True)) for c in colors]
+            }
 
             def make_opt_dict():
-                forks = [fork0_var.get(), fork1_var.get(), fork2_var.get()]
+                forks = [fork0_var, fork1_var, fork2_var]
                 opt_dict = {
-                    'forks': [i for i, fork in enumerate(lforks) if fork.get()],
-                    'user_id': None,
+                    'forks': [str(i) for i, fork in enumerate(forks) if fork.get()],
+                    'comment': comment_var.get(),
+                    'user_id': uid_var.get(),
                     'write_time': (None, None),
                     'video_time': (None, None),
-                    'position': None,
-                    'size': None,
-                    'color': None,
+                    'position': [p for p, v in positions_dict.items() if v['var'].get()],
+                    'size': [s for s, v in sizes_dict.items() if v['var'].get()],
+                    'color': [c for c, v in colors_dict.items() if v['var'].get()],
                     'score': (None, None)
                 }
                 return opt_dict
 
             def select_click_callback():
-                pass
+                opt_dict = make_opt_dict()
+                df = self.org_df
+
+                if opt_dict['comment']:
+                    df = df[df.comment.str.contains(opt_dict['comment'])]
+
+                if opt_dict['user_id']:
+                    df = df[df.user_id.isin(opt_dict['user_id'].split(','))]
+
+                df = df[df.index.str[0].isin(opt_dict['forks'])]
+                df = df[df.position.isin(opt_dict['position'])]
+                df = df[df['size'].isin(opt_dict['size'])]
+                df = df[df.color.isin(opt_dict['color'])]
+
+                self.comments_df = df
+
+                self.comment_view()
 
             def reset_click_callback():
                 self.comments_df = self.org_df.copy()
+
+                self.comment_view()
 
             buttons_frame = ttk.Frame(extract_frame, padding=[10, 10, 10, 10])
 
@@ -595,48 +559,40 @@ class Application(ttk.Frame):
 
             select_button['state'] = reset_button['state'] = 'disable'
 
-            extract_frame.grid(row=1, column=0, padx=10, pady=10)
+            extract_frame.grid(row=1, padx=10, pady=10)
 
             opt_frame.grid(row=0, column=0)
 
-            forks_frame.grid(row=0, column=0, sticky=tk.EW)
+            forks_frame.grid(row=0, sticky=tk.EW)
             fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            comment_frame.grid(row=1, column=0, sticky=tk.EW)
-            comment_entry.grid(row=0, column=0)
+            comment_frame.grid(row=1, sticky=tk.EW)
+            comment_entry.pack(side=tk.LEFT)
 
-            uid_frame.grid(row=2, column=0, sticky=tk.EW)
-            uid_entry.grid(row=0, column=0)
+            uid_frame.grid(row=2, sticky=tk.EW)
+            uid_entry.pack(side=tk.LEFT)
 
-            position_frame.grid(row=3, column=0, sticky=tk.EW)
-            ue_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            naka_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            shita_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            position_frame.grid(row=3, sticky=tk.EW)
+            _ = [
+                positions_dict[p]['checkbutton'].pack(side=tk.LEFT, fill=tk.X, expand=True)
+                for p in positions
+            ]
 
-            size_frame.grid(row=4, column=0, sticky=tk.EW)
-            big_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            medium_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            small_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            size_frame.grid(row=4, sticky=tk.EW)
+            _ = [
+                sizes_dict[s]['checkbutton'].pack(side=tk.LEFT, fill=tk.X, expand=True)
+                for s in sizes
+            ]
 
-            color_frame.grid(row=5, column=0, sticky=tk.EW)
-            general_frame.grid(row=0, column=0, sticky=tk.EW)
-            white_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            red_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            pink_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            orange_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            yellow_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            purple_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            black_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            premium_frame.grid(row=1, column=0, sticky=tk.EW)
-            white2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            red2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            pink2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            orange2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            yellow2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            purple2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            black2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            color_frame.grid(row=5, sticky=tk.EW)
+            general_frame.pack(fill=tk.X, expand=True)
+            premium_frame.pack(fill=tk.X, expand=True)
+            _ = [
+                colors_dict[c]['checkbutton'].pack(side=tk.LEFT, fill=tk.X, expand=True)
+                for c in colors
+            ]
 
             buttons_frame.grid(row=0, column=1, padx=10, pady=10)
             select_button.pack(pady=10)
@@ -662,6 +618,7 @@ class Application(ttk.Frame):
             return x
 
         video_text = '{title}\n▶️{view}💬{comment}💕{like}🕘{post}'
+        card_width = self.rcards_frame.winfo_width()
         with tqdm_tk(info_dict.items()) as pbar:
             for i, d in pbar:
                 thumbnail = url2img(d['thumbnail'])
@@ -680,7 +637,7 @@ class Application(ttk.Frame):
                         'like': d['like'],
                         'post': d['post']
                     }),
-                    padding=[0, 0, 0], width=630,
+                    padding=[0, 0, 0], width=card_width,
                     style='Ranking.TButton', compound='left',
                     image=thumbnail,
                     command=viewer_click_callback(i)
@@ -699,38 +656,63 @@ class Application(ttk.Frame):
         if self.card_button:
             self.card_button.destroy()
 
-        d = self.card_dict
-        if len(d['title']) < 90:
-            title = d['title']
-        else:
-            title = d['title'][:90] + '…'
+        card_dict = self.card_dict
 
-        video_text = '{title}\n▶️{view}💬{comment}💕{like}🕘{post}'
-        thumbnail = url2img(d['thumbnail'])
+        if card_dict['url']:
+            self.ninfo = NicovideoInfomation(video_url=card_dict['url'])
+        else:
+            self.ninfo = None
+
+        if len(card_dict['title']) < 90:
+            title = card_dict['title']
+        else:
+            title = card_dict['title'][:90] + '…'
+
+        video_text = '{title}\n{owner}・▶️{view}💬{comment}💕{like}🕘{post}'
+        thumbnail = url2img(card_dict['thumbnail'])
         thumbnail = ImageTk.PhotoImage(thumbnail.resize((102, 77)))
+
+        def card_click_callback():
+            from pathlib import Path
+
+            with open('tmp/video.html', mode='w') as f:
+                f.write(self.ninfo.video_html())
+            webbrowser.open_new('file://'+str(Path('tmp/video.html').resolve()))
+
+            # tkinterweb が HTML5 に未対応なので断念
+            # from tkinterweb import HtmlFrame
+            # from pathlib import Path
+            # video_win = tk.Toplevel(self)
+            # video_win.title(d['url'])
+            # video_frame = HtmlFrame(video_win)
+            # video_frame.load_url('file://'+str(Path('tmp/video.html').resolve()))
+            # video_frame.pack(fill='both', expand=True)
 
         card_button = ttk.Button(
             self.pane2_frame,
             text=video_text.format(**{
                 'title': title,
-                'view': d['view'],
-                'comment': d['comment'],
-                'like': d['like'],
-                'post': d['post']
+                'owner': self.ninfo.owner_name if self.ninfo else '',
+                'view': card_dict['view'],
+                'comment': card_dict['comment'],
+                'like': card_dict['like'],
+                'post': card_dict['post']
             }),
             style='Card.TButton', compound='left',
             image=thumbnail,
-            command=lambda: webbrowser.open(d['url']),
-            padding=[0, 0, 0], width=60
+            command=card_click_callback,
+            padding=[0, 0, 0],
+            width=65
         )
+
         card_button.photo = thumbnail
         card_button.grid(row=0, column=0, sticky=tk.NW)
 
         self.card_button = card_button
 
     def comment_view(self):
-        notebook = self.tabs_notebook
-        tab_frame = notebook.nametowidget(notebook.tabs()[1])
+        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
+        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['comment']])
 
         if self.comment_treeview:
             self.comment_treeview.destroy()
@@ -744,9 +726,9 @@ class Application(ttk.Frame):
         ).drop(['184', 'position', 'size', 'color', 'command'], axis=1)
         df_width = {
             'cid': 50,
-            'comment': 260,
-            'uid': 90,
-            'wtime': 90,
+            'comment': 400,
+            'uid': 60,
+            'wtime': 85,
             'vtime': 60,
             '184': 20,
             'position': 50,
@@ -757,8 +739,7 @@ class Application(ttk.Frame):
         }
 
         comment_treeview = ttk.Treeview(
-            tab_frame,
-            columns=list(df.columns), height=35
+            tab_frame, columns=list(df.columns), height=COMMENT_LINES
         )
         for i in range(len(df)):
             values = [df.iloc[i][j] for j in range(len(df.columns))]
@@ -766,7 +747,10 @@ class Application(ttk.Frame):
 
         # This code based on https://jablogs.com/detail/13411
         def treeview_sort_column(tv, col, reverse):
-            l = [(tv.set(k, col), k) for k in tv.get_children('')]
+            l = [
+                (tv.set(k, col), k)
+                for k in tv.get_children('')
+            ]
             l.sort(reverse=reverse)
 
             # rearrange items in sorted positions
@@ -793,15 +777,13 @@ class Application(ttk.Frame):
         self.comment_treeview = comment_treeview
 
     def wordcloud_view(self):
-        notebook = self.tabs_notebook
-        tab_frame = notebook.nametowidget(notebook.tabs()[2])
+        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
+        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['wordcloud']])
 
         wordcloud_canvas = tk.Canvas(
             tab_frame,
             width=WORDCLOUD_W,
             height=WORDCLOUD_H
-            #relief=tk.RIDGE  # 枠線を表示
-            # 枠線の幅を設定
         )
 
         wordcloud = Image.open('./wordcloud.png')
@@ -813,9 +795,8 @@ class Application(ttk.Frame):
         self.wordcloud_canvas = wordcloud_canvas
 
     def comment_load(self, **options):
-        ninfo = NicovideoInfomation(video_url=self.card_dict['url'])
-        ninfo.load_comments(**options)
-        comments_df = ninfo.comments_df
+        self.ninfo.load_comments(**options)
+        comments_df = self.ninfo.comments_df
 
         self.comments_df = comments_df
         self.org_df = comments_df.copy()
@@ -844,5 +825,5 @@ def main():
     app.mainloop()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

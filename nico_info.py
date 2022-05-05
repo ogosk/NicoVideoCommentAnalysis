@@ -31,6 +31,18 @@ basic_commands = {
     ]
 }
 
+video_html = \
+'''
+<html lang="ja">
+  <body>
+    <script type="application/javascript" src="https://embed.nicovideo.jp/watch/{video_id}/script?w={w}&h={h}"></script>
+    <noscript>
+      <a href="https://www.nicovideo.jp/watch/{video_id}">{video_title}</a>
+    </noscript>
+  </body>
+</html>
+'''
+
 
 class NicovideoInfomation():
     def __init__(self, video_url: str = None, video_id: str = None):
@@ -92,6 +104,9 @@ class NicovideoInfomation():
 
         if type(forks) == int:
             forks = [forks]
+
+        if self.comments_df is not None:
+            self.comments_df = None
 
         def fetch_comments(forks, when=None):
             params_dict = {
@@ -433,15 +448,12 @@ class NicovideoInfomation():
             return sorted_df
 
     def video_html(self, w: int = 640, h: int = 360):
-        video_id = self.video_id
         video_title = self.video_title
-        html = f'''
-            <script
-              type="application/javascript"
-              src="https://embed.nicovideo.jp/watch/{video_id}/script?w={w}&h={h}">
-            </script>
-            <noscript>
-                <a href="https://www.nicovideo.jp/watch/{video_id}">{video_title}</a>
-            </noscript>
-        '''
+        video_id = self.video_id
+        html = video_html.format(**{
+            'video_title': video_title,
+            'video_id': video_id,
+            'w': w,
+            'h': h
+        })
         return html
