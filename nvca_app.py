@@ -302,15 +302,15 @@ class Application(ttk.Frame):
                 text='コメントの種類', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
-            fork0_var = tk.BooleanVar(); fork0_var.set(True)
+            fork0_var = tk.BooleanVar(value=True)
             fork0_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork0_var, text='一般コメント'
             )
-            fork1_var = tk.BooleanVar(); fork1_var.set(True)
+            fork1_var = tk.BooleanVar(value=True)
             fork1_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork1_var, text='投稿者コメント'
             )
-            fork2_var = tk.BooleanVar(); fork2_var.set(True)
+            fork2_var = tk.BooleanVar(value=True)
             fork2_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork2_var, text='かんたんコメント'
             )
@@ -353,6 +353,46 @@ class Application(ttk.Frame):
             )
             hoprate_scale.set(.1)
 
+            def check_echeckbuttons():
+                df = self.comments_df
+                ebuttons_dict = self.echeckbuttons_dict
+
+                for fork, buttons_dict in ebuttons_dict['forks'].items():
+                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
+                    if fork not in df.index.str[0]:
+                        var.set(False)
+                        button['state'] = 'disable'
+                    else:
+                        var.set(True)
+                        button['state'] = 'enable'
+
+                for position, buttons_dict in ebuttons_dict['position'].items():
+                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
+                    if position not in df.position.values:
+                        var.set(False)
+                        button['state'] = 'disable'
+                    else:
+                        var.set(True)
+                        button['state'] = 'enable'
+
+                for size, buttons_dict in ebuttons_dict['size'].items():
+                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
+                    if size not in df['size'].values:
+                        var.set(False)
+                        button['state'] = 'disable'
+                    else:
+                        var.set(True)
+                        button['state'] = 'enable'
+
+                for color, buttons_dict in ebuttons_dict['color'].items():
+                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
+                    if color not in df.color.values:
+                        var.set(False)
+                        button['state'] = 'disable'
+                    else:
+                        var.set(True)
+                        button['state'] = 'enable'
+
             def load_click_callback():
                 forks = [fork0_var, fork1_var, fork2_var]
                 options = {
@@ -365,6 +405,7 @@ class Application(ttk.Frame):
 
                 self.comment_load(**options)
                 self.comment_view()
+                check_echeckbuttons()
                 # self.wordcloud_generate()
                 # self.wordcloud_view()
 
@@ -419,18 +460,23 @@ class Application(ttk.Frame):
                 opt_frame, text='コメントの種類', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
-            fork0_var = tk.BooleanVar(); fork0_var.set(True)
+            fork0_var = tk.BooleanVar(value=True)
             fork0_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork0_var, text='一般コメント'
             )
-            fork1_var = tk.BooleanVar(); fork1_var.set(True)
+            fork1_var = tk.BooleanVar(value=True)
             fork1_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork1_var, text='投稿者コメント'
             )
-            fork2_var = tk.BooleanVar(); fork2_var.set(True)
+            fork2_var = tk.BooleanVar(value=True)
             fork2_checkbutton = ttk.Checkbutton(
                 forks_frame, variable=fork2_var, text='かんたんコメント'
             )
+            forks_dict = {
+                '0': {'var': fork0_var, 'checkbutton': fork0_checkbutton},
+                '1': {'var': fork1_var, 'checkbutton': fork1_checkbutton},
+                '2': {'var': fork2_var, 'checkbutton': fork2_checkbutton}
+            }
 
             comment_frame = ttk.LabelFrame(
                 opt_frame, text='コメント', labelanchor=tk.NW,
@@ -531,12 +577,19 @@ class Application(ttk.Frame):
                 if opt_dict['user_id']:
                     df = df[df.user_id.isin(opt_dict['user_id'].split(','))]
 
-                df = df[df.index.str[0].isin(opt_dict['forks'])]
-                df = df[df.position.isin(opt_dict['position'])]
-                df = df[df['size'].isin(opt_dict['size'])]
-                df = df[df.color.isin(opt_dict['color'])]
+                df = df[
+                    np.all(
+                        (
+                            df.index.str[0].isin(opt_dict['forks']),
+                            df.position.isin(opt_dict['position']),
+                            df['size'].isin(opt_dict['size']),
+                            df.color.isin(opt_dict['color'])
+                        ),
+                        axis=0
+                    )
+                ].sort_values('write_time')
 
-                self.comments_df = df.sort_values('write_time')
+                self.comments_df = df
 
                 self.comment_view()
 
@@ -599,6 +652,12 @@ class Application(ttk.Frame):
             select_button.pack(pady=10)
             reset_button.pack(pady=10)
 
+            self.echeckbuttons_dict = {
+                'forks': forks_dict,
+                'position': positions_dict,
+                'size': sizes_dict,
+                'color': colors_dict
+            }
             self.ebuttons_frame = buttons_frame
 
         extract_set()
