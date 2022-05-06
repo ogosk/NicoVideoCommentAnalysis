@@ -379,7 +379,7 @@ class NicovideoInfomation():
                     if not forks:
                         break
 
-        self.comments_df = comments_df
+        self.comments_df = comments_df.sort_values('write_time')
 
         if check:
             self.check_comments()

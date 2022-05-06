@@ -238,8 +238,26 @@ class Application(ttk.Frame):
         )
 
         viewer_canvas.yview_moveto(0)
-        viewer_canvas['yscrollcommand'] = viewer_scrollbar.set
-        viewer_canvas.config(scrollregion=(0, 0, 0, 0))
+        viewer_canvas.config(
+            yscrollcommand=viewer_scrollbar.set,
+            scrollregion=(0, 0, 0, 0)
+        )
+
+        # this code is from https://jablogs.com/detail/2137
+        def bound_to_mousewheel(event):
+            viewer_canvas.bind_all('<MouseWheel>', on_mousewheel)
+
+        def unbound_to_mousewheel(event):
+            viewer_canvas.unbind_all('<MouseWheel>')
+
+        def on_mousewheel(event):
+            # Windows
+            # viewer_canvas.yview_scroll(-1*int(event.delta/120), 'units')
+            # OSX
+            viewer_canvas.yview_scroll(-1*int(event.delta), 'units')
+
+        viewer_frame.bind('<Enter>', bound_to_mousewheel)
+        viewer_frame.bind('<Leave>', unbound_to_mousewheel)
 
         cards_frame = tk.Frame(viewer_canvas)
 
@@ -546,7 +564,7 @@ class Application(ttk.Frame):
                     'checkbutton': ttk.Checkbutton(
                         general_frame if c in gcolors else premium_frame,
                         variable=var,
-                        text='■',
+                        text='●',
                         style=f'{c[0].upper()+c[1:]}.TCheckbutton'
                     )
                 } for c, var in [(c, tk.BooleanVar(value=True)) for c in colors]
@@ -594,9 +612,11 @@ class Application(ttk.Frame):
                 self.comment_view()
 
             def reset_click_callback():
-                self.comments_df = self.org_df.copy()
-
-                self.comment_view()
+                for elems_dict in self.echeckbuttons_dict.values():
+                    for elems in elems_dict.values():
+                        var, button = elems['var'], elems['checkbutton']
+                        if button['state'] == 'enable':
+                            var.set(True)
 
             buttons_frame = ttk.Frame(extract_frame, padding=[10, 10, 10, 10])
 
@@ -806,12 +826,16 @@ class Application(ttk.Frame):
         if self.comment_treeview:
             self.comment_treeview.destroy()
 
-        df = self.comments_df.reset_index().sort_values('write_time')
+        rename_dict = {
+            'comment_id': 'cid',
+            'user_id': 'uid',
+            'write_time': 'wtime',
+            'video_time': 'vtime'
+        }
+
+        df = self.comments_df.reset_index()
         df = df.rename(
-            columns={
-                'comment_id': 'cid', 'user_id': 'uid',
-                'write_time': 'wtime', 'video_time': 'vtime'
-            }
+            columns=rename_dict
         ).drop(['184', 'position', 'size', 'color', 'command'], axis=1)
         df_width = {
             'cid': 50,
@@ -834,31 +858,41 @@ class Application(ttk.Frame):
             values = [df.iloc[i][j] for j in range(len(df.columns))]
             comment_treeview.insert('', 'end', values=values)
 
-        # This code based on https://jablogs.com/detail/13411
-        def treeview_sort_column(tv, col, reverse):
-            l = [
-                (tv.set(k, col), k)
-                for k in tv.get_children('')
-            ]
-            l.sort(reverse=reverse)
+        def treeview_sort_callback(tv, col):
+            if col in rename_dict.values():
+                col_org = {v: k for k, v in rename_dict.items()}[col]
+            else:
+                col_org = col
 
-            # rearrange items in sorted positions
-            _ = [tv.move(k, '', index) for index, (val, k) in enumerate(l)]
-
-            # reverse sort next time
-            sort_callback = lambda _col=col: treeview_sort_column(
-                tv, _col, not reverse
+            # 2回クリックで昇順と降順に対応する
+            # 両方ソートして比較して決めるため，効率は悪いが…
+            df = self.comments_df
+            df_ascending = df.sort_values(
+                [col_org, 'write_time'], ascending=[True, True]
             )
-            tv.heading(col, text=col, command=sort_callback)
+            df_descending = df.sort_values(
+                [col_org, 'write_time'], ascending=[False, True]
+            )
+
+            if (df.index == df_ascending.index).all():
+                self.comments_df = df_descending
+            else:
+                self.comments_df = df_ascending
+
+            self.comment_view()
 
         comment_treeview['show'] = 'headings'
         _ = [
             (
-                comment_treeview.heading(i, text=c, command= \
-                    lambda col=c: treeview_sort_column(comment_treeview, col, False)),
-                comment_treeview.column(c, width=df_width[c], stretch=False)
+                comment_treeview.heading(
+                    i,
+                    text=col,
+                    command= lambda col_=col: \
+                        treeview_sort_callback(comment_treeview, col_)
+                ),
+                comment_treeview.column(col, width=df_width[col], stretch=False)
             )
-            for i, c in enumerate(df.columns)
+            for i, col in enumerate(df.columns)
         ]
 
         comment_treeview.grid(row=2, column=0)
@@ -899,7 +933,8 @@ class Application(ttk.Frame):
 def main():
     win = ttkthemes.ThemedTk()
     app = Application(master=win)
-    app.mainloop()
+
+    win.mainloop()
 
 
 if __name__ == '__main__':
