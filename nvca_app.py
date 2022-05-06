@@ -1,9 +1,10 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import ttkthemes
 import numpy as np
 import pandas as pd
 import webbrowser
+import datetime
 from PIL import Image, ImageTk
 from wordcloud import WordCloud
 from tqdm.tk import tqdm as tqdm_tk
@@ -82,38 +83,39 @@ class Application(ttk.Frame):
             'Card.TButton',
             anchor='w', borderwidth=0, justify='LEFT', wraplength=550
         )
-        style.configure('White.TCheckbutton',   foreground='#FFFFFF')
-        style.configure('Red.TCheckbutton',     foreground='#FF0000')
-        style.configure('Pink.TCheckbutton',    foreground='#FF8080')
-        style.configure('Orange.TCheckbutton',  foreground='#FFC000')
-        style.configure('Yellow.TCheckbutton',  foreground='#FFFF00')
-        style.configure('Green.TCheckbutton',   foreground='#00FF00')
-        style.configure('Cyan.TCheckbutton',    foreground='#00FFFF')
-        style.configure('Blue.TCheckbutton',    foreground='#0000FF')
-        style.configure('Purple.TCheckbutton',  foreground='#C000FF')
-        style.configure('Black.TCheckbutton',   foreground='#000000')
-        style.configure('White2.TCheckbutton',  foreground='#CCCC99')
-        style.configure('Red2.TCheckbutton',    foreground='#CC0033')
-        style.configure('Pink2.TCheckbutton',   foreground='#FF33CC')
-        style.configure('Orange2.TCheckbutton', foreground='#FF6600')
-        style.configure('Yellow2.TCheckbutton', foreground='#999900')
-        style.configure('Green2.TCheckbutton',  foreground='#00CC66')
-        style.configure('Cyan2.TCheckbutton',   foreground='#00CCCC')
-        style.configure('Blue2.TCheckbutton',   foreground='#3399FF')
-        style.configure('Purple2.TCheckbutton', foreground='#6633CC')
-        style.configure('Black2.TCheckbutton',  foreground='#666666')
+        style.map('White.TCheckbutton',   foreground=[('!disabled', '#FFFFFF'), ('disabled', '#333333')])
+        style.map('Red.TCheckbutton',     foreground=[('!disabled', '#FF0000'), ('disabled', '#333333')])
+        style.map('Pink.TCheckbutton',    foreground=[('!disabled', '#FF8080'), ('disabled', '#333333')])
+        style.map('Orange.TCheckbutton',  foreground=[('!disabled', '#FFC000'), ('disabled', '#333333')])
+        style.map('Yellow.TCheckbutton',  foreground=[('!disabled', '#FFFF00'), ('disabled', '#333333')])
+        style.map('Green.TCheckbutton',   foreground=[('!disabled', '#00FF00'), ('disabled', '#333333')])
+        style.map('Cyan.TCheckbutton',    foreground=[('!disabled', '#00FFFF'), ('disabled', '#333333')])
+        style.map('Blue.TCheckbutton',    foreground=[('!disabled', '#0000FF'), ('disabled', '#333333')])
+        style.map('Purple.TCheckbutton',  foreground=[('!disabled', '#C000FF'), ('disabled', '#333333')])
+        style.map('Black.TCheckbutton',   foreground=[('!disabled', '#000000'), ('disabled', '#333333')])
+        style.map('White2.TCheckbutton',  foreground=[('!disabled', '#CCCC99'), ('disabled', '#333333')])
+        style.map('Red2.TCheckbutton',    foreground=[('!disabled', '#CC0033'), ('disabled', '#333333')])
+        style.map('Pink2.TCheckbutton',   foreground=[('!disabled', '#FF33CC'), ('disabled', '#333333')])
+        style.map('Orange2.TCheckbutton', foreground=[('!disabled', '#FF6600'), ('disabled', '#333333')])
+        style.map('Yellow2.TCheckbutton', foreground=[('!disabled', '#999900'), ('disabled', '#333333')])
+        style.map('Green2.TCheckbutton',  foreground=[('!disabled', '#00CC66'), ('disabled', '#333333')])
+        style.map('Cyan2.TCheckbutton',   foreground=[('!disabled', '#00CCCC'), ('disabled', '#333333')])
+        style.map('Blue2.TCheckbutton',   foreground=[('!disabled', '#3399FF'), ('disabled', '#333333')])
+        style.map('Purple2.TCheckbutton', foreground=[('!disabled', '#6633CC'), ('disabled', '#333333')])
+        style.map('Black2.TCheckbutton',  foreground=[('!disabled', '#666666'), ('disabled', '#333333')])
 
         # insrtance var
         # dummy
         self.card_dict = {
             'url': '',
-            'title': '',
+            'title': 'X'*200,
+            'owner': 'XXXXX',
             'thumbnail': 'https://nicovideo.cdn.nimg.jp/web/img/common/video_deleted.jpg',
-            'post': '',
-            'view': '',
-            'comment': '',
-            'like': '',
-            'mylist': ''
+            'post': 'XXXX/XX/XX XX:XX',
+            'view': 'X,XXX',
+            'comment': 'X,XXX',
+            'like': 'X,XXX',
+            'mylist': 'X,XXX'
         }
         self.comments_df = pd.DataFrame(
             columns=[
@@ -424,11 +426,28 @@ class Application(ttk.Frame):
                 self.comment_load(**options)
                 self.comment_view()
                 check_echeckbuttons()
-                # self.wordcloud_generate()
-                # self.wordcloud_view()
 
                 for button in self.ebuttons_frame.winfo_children():
                     button['state'] = 'enable'
+
+                save_button['state'] = 'enable'
+
+            def save_click_callback():
+                timestamp = datetime.datetime.today().strftime('%y%m%d%H')
+                vid = self.ninfo.video_id
+                filename = filedialog.asksaveasfilename(
+                    parent=self.master,
+                    title='save',
+                    initialfile=f'{timestamp}_{vid}',
+                    filetypes=[('csv', '.csv'), ('pickle', '.pkl')],
+                    initialdir = "./",
+                    defaultextension='csv'
+                )
+                extension = filename.split('.')[-1]
+                if extension == 'csv':
+                    self.org_df.to_csv(filename)
+                elif extension == 'pkl':
+                    self.org_df.to_pickle(filename)
 
             buttons_frame = ttk.Frame(load_frame, padding=[10, 10, 10, 10])
 
@@ -436,7 +455,11 @@ class Application(ttk.Frame):
                 buttons_frame,
                 text='load', command=load_click_callback,
                 padding=[0, 0, 0], width=20,
-
+            )
+            save_button = ttk.Button(
+                buttons_frame,
+                text='save', state='disable', command=save_click_callback,
+                padding=[0, 0, 0], width=20,
             )
 
             load_frame.grid(row=0, padx=10, pady=10)
@@ -458,7 +481,8 @@ class Application(ttk.Frame):
             hoprate_label.pack(side=tk.LEFT)
 
             buttons_frame.grid(row=0, column=1, padx=10, pady=10)
-            load_button.grid(row=0, column=0)
+            load_button.pack(pady=10)
+            save_button.pack(pady=10)
 
         load_set()
 
@@ -618,20 +642,45 @@ class Application(ttk.Frame):
                         if button['state'] == 'enable':
                             var.set(True)
 
+                for elems_dict in self.eentries_dict.values():
+                    for elems in elems_dict.values():
+                        var, entry = elems_dict['var'], elems_dict['entry']
+                        var.set('')
+
+            def save_click_callback():
+                timestamp = datetime.datetime.today().strftime('%y%m%d%H')
+                vid = self.ninfo.video_id
+                filename = filedialog.asksaveasfilename(
+                    parent=self.master,
+                    title='save',
+                    initialfile=f'{timestamp}_{vid}',
+                    filetypes=[('csv', '.csv'), ('pickle', '.pkl')],
+                    initialdir = "./",
+                    defaultextension='csv'
+                )
+                extension = filename.split('.')[-1]
+                if extension == 'csv':
+                    self.comments_df.to_csv(filename)
+                elif extension == 'pkl':
+                    self.comments_df.to_pickle(filename)
+
             buttons_frame = ttk.Frame(extract_frame, padding=[10, 10, 10, 10])
 
             select_button = ttk.Button(
                 buttons_frame,
-                text='select', command=select_click_callback,
+                text='select', state='disable', command=select_click_callback,
                 padding=[0, 0, 0], width=20,
             )
             reset_button = ttk.Button(
                 buttons_frame,
-                text='reset', command=reset_click_callback,
+                text='reset', state='disable', command=reset_click_callback,
                 padding=[0, 0, 0], width=20,
             )
-
-            select_button['state'] = reset_button['state'] = 'disable'
+            save_button = ttk.Button(
+                buttons_frame,
+                text='save', state='disable', command=save_click_callback,
+                padding=[0, 0, 0], width=20,
+            )
 
             extract_frame.grid(row=1, padx=10, pady=10)
 
@@ -671,12 +720,17 @@ class Application(ttk.Frame):
             buttons_frame.grid(row=0, column=1, padx=10, pady=10)
             select_button.pack(pady=10)
             reset_button.pack(pady=10)
+            save_button.pack(pady=10)
 
             self.echeckbuttons_dict = {
                 'forks': forks_dict,
                 'position': positions_dict,
                 'size': sizes_dict,
                 'color': colors_dict
+            }
+            self.eentries_dict = {
+                'comment': {'var': comment_var, 'entry': comment_entry},
+                'uid': {'var': uid_var, 'entry': uid_entry}
             }
             self.ebuttons_frame = buttons_frame
 
@@ -692,7 +746,7 @@ class Application(ttk.Frame):
 
         note_label = ttk.Label(
             tab_frame,
-            text='読み込みや抽出の際に「かんたんコメント」を除去しておくのがおすすめです'
+            text='読み込みや抽出の際に「かんたんコメント」を除去しておくのがおすすめ'
         )
 
         plot_button = ttk.Button(
@@ -726,7 +780,7 @@ class Application(ttk.Frame):
                 self.card_view()
             return x
 
-        video_text = '{title}\n▶️{view}💬{comment}💕{like}🕘{post}'
+        video_text = '{title}\n▶️{view} 💬{comment} 💕{like} 🕘{post}'
         card_width = self.rcards_frame.winfo_width()
         with tqdm_tk(info_dict.items()) as pbar:
             for i, d in pbar:
@@ -777,7 +831,7 @@ class Application(ttk.Frame):
         else:
             title = card_dict['title'][:90] + '…'
 
-        video_text = '{title}\n{owner}・▶️{view}💬{comment}💕{like}🕘{post}'
+        video_text = '{title}\n{owner}・▶️{view} 💬{comment} 💕{like} 🕘{post}'
         thumbnail = url2img(card_dict['thumbnail'])
         thumbnail = ImageTk.PhotoImage(thumbnail.resize((102, 77)))
 
