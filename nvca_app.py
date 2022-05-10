@@ -77,11 +77,15 @@ class Application(ttk.Frame):
         style.theme_use('black')
         style.configure(
             'Ranking.TButton',
-            anchor='w', borderwidth=0, justify='LEFT', wraplength=350
+            anchor=tk.W, borderwidth=0, justify=tk.LEFT, wraplength=350
         )
         style.configure(
             'Card.TButton',
-            anchor='w', borderwidth=0, justify='LEFT', wraplength=550
+            anchor=tk.W, borderwidth=0, justify=tk.LEFT, wraplength=550
+        )
+        style.configure(
+            'Normal.TButton',
+            anchor=tk.CENTER
         )
         style.map('White.TCheckbutton',   foreground=[('!disabled', '#FFFFFF'), ('disabled', '#333333')])
         style.map('Red.TCheckbutton',     foreground=[('!disabled', '#FF0000'), ('disabled', '#333333')])
@@ -103,6 +107,8 @@ class Application(ttk.Frame):
         style.map('Blue2.TCheckbutton',   foreground=[('!disabled', '#3399FF'), ('disabled', '#333333')])
         style.map('Purple2.TCheckbutton', foreground=[('!disabled', '#6633CC'), ('disabled', '#333333')])
         style.map('Black2.TCheckbutton',  foreground=[('!disabled', '#666666'), ('disabled', '#333333')])
+
+        style.configure('Debug.TFrame', background='#FFFFFF')
 
         # insrtance var
         # dummy
@@ -165,7 +171,7 @@ class Application(ttk.Frame):
         vid_button = ttk.Button(
             panel_frame,
             text='OK', command=vid_click_callback,
-            width=5
+            style='Normal.TButton', width=5
         )
 
         # === Video URL ===
@@ -181,7 +187,7 @@ class Application(ttk.Frame):
         vurl_button = ttk.Button(
             panel_frame,
             text='OK', command=vurl_click_callback,
-            width=5
+            style='Normal.TButton', width=5
         )
 
         # === place ===
@@ -224,14 +230,14 @@ class Application(ttk.Frame):
         select_button = ttk.Button(
             panel_frame,
             text='ランキング取得', command=self.ranking_view,
-            width=10
+            style='Normal.TButton', width=10
         )
 
         # === ranking viewer ===
         viewer_frame = ttk.Frame(panel_frame)
         viewer_canvas = tk.Canvas(
             viewer_frame,
-            width=420, height=750#int(845/42*(COMMENT_LINES+2))# 30->750 40->845
+            width=420, height=755#int(845/42*(COMMENT_LINES+2))# 30->750 40->845
         )
         viewer_scrollbar = ttk.Scrollbar(
             viewer_frame,
@@ -284,7 +290,6 @@ class Application(ttk.Frame):
         self.term = term_var
         self.rcards_frame = cards_frame
         self.rviewer_canvas = viewer_canvas
-
 
     def tabs_set(self):
         control_tab = ttk.Frame(self.tabs_notebook)
@@ -377,48 +382,76 @@ class Application(ttk.Frame):
                 df = self.comments_df
                 ebuttons_dict = self.echeckbuttons_dict
 
-                for fork, buttons_dict in ebuttons_dict['forks'].items():
-                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
-                    if fork not in df.index.str[0]:
-                        var.set(False)
-                        button['state'] = 'disable'
-                    else:
-                        var.set(True)
-                        button['state'] = 'enable'
+                for b_type, bs_dict in ebuttons_dict.items():
+                    for b_name, b_dict in bs_dict.items():
+                        var, button = b_dict['var'], b_dict['checkbutton']
 
-                for position, buttons_dict in ebuttons_dict['position'].items():
-                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
-                    if position not in df.position.values:
-                        var.set(False)
-                        button['state'] = 'disable'
-                    else:
-                        var.set(True)
-                        button['state'] = 'enable'
+                        if b_type == 'forks':
+                            vals = df.index.str[0]
+                        else:
+                            vals = df[b_type].values
 
-                for size, buttons_dict in ebuttons_dict['size'].items():
-                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
-                    if size not in df['size'].values:
-                        var.set(False)
-                        button['state'] = 'disable'
-                    else:
-                        var.set(True)
-                        button['state'] = 'enable'
+                        if b_name not in vals:
+                            var.set(False)
+                            button['state'] = 'disable'
+                        else:
+                            var.set(True)
+                            button['state'] = 'enable'
 
-                for color, buttons_dict in ebuttons_dict['color'].items():
-                    var, button = buttons_dict['var'], buttons_dict['checkbutton']
-                    if color not in df.color.values:
-                        var.set(False)
-                        button['state'] = 'disable'
-                    else:
-                        var.set(True)
-                        button['state'] = 'enable'
+            def check_overview(overview):
+                df, org_df = self.comments_df, self.org_df
+                forks = sorted(list(set(df.index.str[0])))
+                overview.delete(*overview.get_children())
+
+                c_dict = {'0': '一般コメント', '1': '投稿者コメント', '2': 'かんたんコメント'}
+                c_nums, rows = [], []
+                for fork in forks:
+                    got = df[df.index.str[0]==fork]
+                    org = org_df[org_df.index.str[0]==fork]
+                    c_indices = list(map(int, org.index.str[2:]))
+                    c_got_num = len(got)
+                    c_nums.append(max(c_indices))
+                    u_got_num = len(set(got.user_id))
+
+                    rows.append(
+                        overview.insert(
+                            '', tk.END, text=c_dict[fork], open=False
+                        )
+                    )
+                    _ = overview.insert(
+                        rows[-1], tk.END, text='コメント数', value=c_got_num
+                    )
+                    _ = overview.insert(
+                        rows[-1], tk.END, text='ユーザー数', value=u_got_num
+                    )
+                    _ = overview.insert(
+                        rows[-1], tk.END, text='推定取得率', value=f'{c_got_num/c_nums[-1]:.2%}'
+                    )
+
+                c_got_num, c_num = len(df), sum(c_nums)
+                if len(forks) > 1:
+                    row = overview.insert(
+                        '', 0, text='トータル', open=True
+                    )
+                    _ = overview.insert(
+                        row, tk.END, text='コメント数', value=c_got_num
+                    )
+                    _ = overview.insert(
+                        row, tk.END, text='ユーザー数', value=u_got_num
+                    )
+                    _ = overview.insert(
+                        row, tk.END, text='推定取得率', value=f'{c_got_num/c_num:.2%}'
+                    )
+                else:
+                    overview.item(rows[0], open=True)
 
             def load_click_callback():
                 forks = [fork0_var, fork1_var, fork2_var]
                 options = {
                     'forks': [i for i, fork in enumerate(forks) if fork.get()],
                     'mode': mode_var.get(),
-                    'hop_rate': hoprate_val.get()
+                    'hop_rate': hoprate_val.get(),
+                    'check': False
                 }
                 self.tabs_notebook.tab(tab_id=tabs_dict['comment'], state='normal')
                 self.tabs_notebook.tab(tab_id=tabs_dict['wordcloud'], state='normal')
@@ -426,6 +459,7 @@ class Application(ttk.Frame):
                 self.comment_load(**options)
                 self.comment_view()
                 check_echeckbuttons()
+                check_overview(overview_treeview)
 
                 for button in self.ebuttons_frame.winfo_children():
                     button['state'] = 'enable'
@@ -454,35 +488,61 @@ class Application(ttk.Frame):
             load_button = ttk.Button(
                 buttons_frame,
                 text='load', command=load_click_callback,
-                padding=[0, 0, 0], width=20,
+                style='Normal.TButton', padding=[0, 5, 0], width=8
             )
             save_button = ttk.Button(
                 buttons_frame,
                 text='save', state='disable', command=save_click_callback,
-                padding=[0, 0, 0], width=20,
+                style='Normal.TButton', padding=[0, 5, 0], width=8
             )
 
-            load_frame.grid(row=0, padx=10, pady=10)
+            abstract_frame = ttk.LabelFrame(
+                load_frame,
+                text='取得コメント概要', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+            )
 
-            opt_frame.grid(row=0, column=0)
+            cols = ['#0', 'data']
+            params = {
+                '#0':   {'text': '種類', 'width': 175},
+                'data': {'text': 'データ', 'width': 120}
+            }
+            overview_treeview = ttk.Treeview(
+                abstract_frame, columns=cols[1:], height=5
+            )
+            _ = [
+                (
+                    overview_treeview.column(col, width=params[col]['width']),
+                    overview_treeview.heading(col, text=params[col]['text'])
+                )
+                for col in cols
+            ]
 
-            forks_frame.grid(row=0, sticky=tk.EW)
+            overview_treeview['height'] = 6
+
+            load_frame.pack(anchor=tk.NW, fill=tk.X, padx=10, pady=10)
+
+            opt_frame.pack(side=tk.LEFT, anchor=tk.W, fill=tk.Y, expand=True)
+
+            forks_frame.pack(anchor=tk.W, expand=True)
             fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            mode_frame.grid(row=1, sticky=tk.EW)
-            once_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            roughly_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            exactly_radiobutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            mode_frame.pack(anchor=tk.W, fill=tk.X, expand=True)
+            once_radiobutton.pack(side=tk.LEFT, padx=[0, 20])
+            roughly_radiobutton.pack(side=tk.LEFT, padx=20)
+            exactly_radiobutton.pack(side=tk.LEFT, padx=20)
 
-            hoprate_frame.grid(row=2, sticky=tk.EW)
+            hoprate_frame.pack(anchor=tk.W, expand=True)
             hoprate_scale.pack(side=tk.LEFT)
             hoprate_label.pack(side=tk.LEFT)
 
-            buttons_frame.grid(row=0, column=1, padx=10, pady=10)
-            load_button.pack(pady=10)
-            save_button.pack(pady=10)
+            buttons_frame.pack(anchor=tk.NW, expand=True, fill=tk.X, pady=10)
+            load_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
+            save_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
+
+            abstract_frame.pack(anchor=tk.SW, fill=tk.BOTH)
+            overview_treeview.pack()
 
         load_set()
 
@@ -493,13 +553,17 @@ class Application(ttk.Frame):
                 text='コメント抽出', relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
 
-            opt_frame = ttk.LabelFrame(
+            opt1_frame = ttk.LabelFrame(
                 extract_frame, text='options', relief=tk.RIDGE,
+                padding=[10, 10, 10, 10]
+            )
+            opt2_frame = ttk.Frame(
+                extract_frame, relief=tk.RIDGE,
                 padding=[10, 10, 10, 10]
             )
 
             forks_frame = ttk.LabelFrame(
-                opt_frame, text='コメントの種類', labelanchor=tk.NW,
+                opt1_frame, text='コメントの種類', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             fork0_var = tk.BooleanVar(value=True)
@@ -521,21 +585,21 @@ class Application(ttk.Frame):
             }
 
             comment_frame = ttk.LabelFrame(
-                opt_frame, text='コメント', labelanchor=tk.NW,
+                opt1_frame, text='コメント', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             comment_var = tk.StringVar()
             comment_entry = tk.Entry(comment_frame, textvariable=comment_var)
 
             uid_frame = ttk.LabelFrame(
-                opt_frame, text='ユーザーID (,区切りで複数入力可)', labelanchor=tk.NW,
+                opt1_frame, text='ユーザーID (,区切りで複数入力可)', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             uid_var = tk.StringVar()
             uid_entry = tk.Entry(uid_frame, textvariable=uid_var)
 
             position_frame = ttk.LabelFrame(
-                opt_frame, text='コメントの位置 (デフォルト：中)', labelanchor=tk.NW,
+                opt1_frame, text='コメントの位置 (デフォルト：中)', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             positions = ['ue', 'naka', 'shita']
@@ -551,7 +615,7 @@ class Application(ttk.Frame):
             }
 
             size_frame = ttk.LabelFrame(
-                opt_frame, text='コメントの大きさ (デフォルト：中)', labelanchor=tk.NW,
+                opt2_frame, text='コメントの大きさ (デフォルト：中)', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             sizes = ['big', 'medium', 'small']
@@ -567,7 +631,7 @@ class Application(ttk.Frame):
             }
 
             color_frame = ttk.LabelFrame(
-                opt_frame, text='コメントの色', labelanchor=tk.NW,
+                opt1_frame, text='コメントの色', labelanchor=tk.NW,
                 padding=[5, 5, 5, 5]
             )
             general_frame = ttk.LabelFrame(
@@ -609,6 +673,53 @@ class Application(ttk.Frame):
                 }
                 return opt_dict
 
+            def check_overview(overview):
+                df, org_df = self.comments_df, self.org_df
+                forks = sorted(list(set(df.index.str[0])))
+                overview.delete(*overview.get_children())
+
+                c_dict = {'0': '一般コメント', '1': '投稿者コメント', '2': 'かんたんコメント'}
+                c_nums, rows = [], []
+                for fork in forks:
+                    got = df[df.index.str[0]==fork]
+                    org = org_df[org_df.index.str[0]==fork]
+                    c_indices = list(map(int, org.index.str[2:]))
+                    c_got_num = len(got)
+                    c_nums.append(len(c_indices))
+                    u_got_num = len(set(got.user_id))
+
+                    rows.append(
+                        overview.insert(
+                            '', tk.END, text=c_dict[fork], open=False
+                        )
+                    )
+                    _ = overview.insert(
+                        rows[-1], tk.END, text='コメント数', value=c_got_num
+                    )
+                    _ = overview.insert(
+                        rows[-1], tk.END, text='ユーザー数', value=u_got_num
+                    )
+                    _ = overview.insert(
+                        rows[-1], tk.END, text='抽出率', value=f'{c_got_num/c_nums[-1]:.2%}'
+                    )
+
+                c_got_num, c_num = len(df), sum(c_nums)
+                if len(forks) > 1:
+                    row = overview.insert(
+                        '', 0, text='トータル', open=True
+                    )
+                    _ = overview.insert(
+                        row, tk.END, text='コメント数', value=c_got_num
+                    )
+                    _ = overview.insert(
+                        row, tk.END, text='ユーザー数', value=u_got_num
+                    )
+                    _ = overview.insert(
+                        row, tk.END, text='抽出率', value=f'{c_got_num/c_num:.2%}'
+                    )
+                else:
+                    overview.item(rows[0], open=True)
+
             def select_click_callback():
                 opt_dict = make_opt_dict()
                 df = self.org_df
@@ -633,6 +744,7 @@ class Application(ttk.Frame):
 
                 self.comments_df = df
 
+                check_overview(overview_treeview)
                 self.comment_view()
 
             def reset_click_callback():
@@ -669,47 +781,59 @@ class Application(ttk.Frame):
             select_button = ttk.Button(
                 buttons_frame,
                 text='select', state='disable', command=select_click_callback,
-                padding=[0, 0, 0], width=20,
+                style='Normal.TButton', padding=[0, 5, 0], width=8,
             )
             reset_button = ttk.Button(
                 buttons_frame,
                 text='reset', state='disable', command=reset_click_callback,
-                padding=[0, 0, 0], width=20,
+                style='Normal.TButton', padding=[0, 5, 0], width=8,
             )
             save_button = ttk.Button(
                 buttons_frame,
                 text='save', state='disable', command=save_click_callback,
-                padding=[0, 0, 0], width=20,
+                style='Normal.TButton', padding=[0, 5, 0], width=8,
             )
 
-            extract_frame.grid(row=1, padx=10, pady=10)
+            abstract_frame = ttk.LabelFrame(
+                extract_frame,
+                text='抽出コメント概要', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+            )
 
-            opt_frame.grid(row=0, column=0)
+            cols = ['#0', 'data']
+            params = {
+                '#0':   {'text': '種類', 'width': 175},
+                'data': {'text': 'データ', 'width': 120}
+            }
+            overview_treeview = ttk.Treeview(
+                abstract_frame, columns=cols[1:], height=5
+            )
+            _ = [
+                (
+                    overview_treeview.column(col, width=params[col]['width']),
+                    overview_treeview.heading(col, text=params[col]['text'])
+                )
+                for col in cols
+            ]
 
-            forks_frame.grid(row=0, sticky=tk.EW)
+            overview_treeview['height'] = 6
+
+            extract_frame.pack(anchor=tk.NW, fill=tk.X, padx=10, pady=10)
+
+            opt1_frame.pack(side=tk.LEFT, expand=True, anchor=tk.NW)
+            opt2_frame.pack(anchor=tk.NW, expand=True, fill=tk.X, pady=[8, 0])
+
+            forks_frame.pack(anchor=tk.W, expand=True)
             fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            comment_frame.grid(row=1, sticky=tk.EW)
+            comment_frame.pack(anchor=tk.W, expand=True)
             comment_entry.pack(side=tk.LEFT)
 
-            uid_frame.grid(row=2, sticky=tk.EW)
+            uid_frame.pack(anchor=tk.W, expand=True)
             uid_entry.pack(side=tk.LEFT)
 
-            position_frame.grid(row=3, sticky=tk.EW)
-            _ = [
-                positions_dict[p]['checkbutton'].pack(side=tk.LEFT, fill=tk.X, expand=True)
-                for p in positions
-            ]
-
-            size_frame.grid(row=4, sticky=tk.EW)
-            _ = [
-                sizes_dict[s]['checkbutton'].pack(side=tk.LEFT, fill=tk.X, expand=True)
-                for s in sizes
-            ]
-
-            color_frame.grid(row=5, sticky=tk.EW)
+            color_frame.pack(anchor=tk.W, expand=True)
             general_frame.pack(fill=tk.X, expand=True)
             premium_frame.pack(fill=tk.X, expand=True)
             _ = [
@@ -717,10 +841,29 @@ class Application(ttk.Frame):
                 for c in colors
             ]
 
-            buttons_frame.grid(row=0, column=1, padx=10, pady=10)
-            select_button.pack(pady=10)
-            reset_button.pack(pady=10)
-            save_button.pack(pady=10)
+            position_frame.pack(anchor=tk.W, expand=True)
+            _ = [
+                positions_dict[p]['checkbutton'].pack(side=tk.LEFT, padx=[0, 30])
+                if p == 'ue'
+                else positions_dict[p]['checkbutton'].pack(side=tk.LEFT, padx=30)
+                for p in positions
+            ]
+
+            size_frame.pack(anchor=tk.W, expand=True)
+            _ = [
+                sizes_dict[s]['checkbutton'].pack(side=tk.LEFT, padx=[0, 30])
+                if s == 'big'
+                else sizes_dict[s]['checkbutton'].pack(side=tk.LEFT, padx=30)
+                for s in sizes
+            ]
+
+            buttons_frame.pack(anchor=tk.W, fill=tk.X, expand=True)
+            select_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
+            reset_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
+            save_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
+
+            abstract_frame.pack(anchor=tk.SW, fill=tk.BOTH, expand=True)
+            overview_treeview.pack()
 
             self.echeckbuttons_dict = {
                 'forks': forks_dict,
@@ -869,7 +1012,7 @@ class Application(ttk.Frame):
         )
 
         card_button.photo = thumbnail
-        card_button.grid(row=0, column=0, sticky=tk.NW)
+        card_button.grid(row=0, sticky=tk.NW+tk.EW)
 
         self.card_button = card_button
 
@@ -891,22 +1034,10 @@ class Application(ttk.Frame):
         df = df.rename(
             columns=rename_dict
         ).drop(['184', 'position', 'size', 'color', 'command'], axis=1)
-        df_width = {
-            'cid': 50,
-            'comment': 400,
-            'uid': 60,
-            'wtime': 85,
-            'vtime': 60,
-            '184': 20,
-            'position': 50,
-            'size': 50,
-            'color': 50,
-            'command': 50,
-            'score': 50
-        }
 
         comment_treeview = ttk.Treeview(
-            tab_frame, columns=list(df.columns), height=COMMENT_LINES
+            tab_frame, show='headings', columns=list(df.columns),
+            height=COMMENT_LINES
         )
         for i in range(len(df)):
             values = [df.iloc[i][j] for j in range(len(df.columns))]
@@ -935,21 +1066,33 @@ class Application(ttk.Frame):
 
             self.comment_view()
 
-        comment_treeview['show'] = 'headings'
+        params = {
+            'cid':      {'text': 'コメントID', 'width': 50},
+            'comment':  {'text': 'コメント', 'width': 400},
+            'uid':      {'text': 'ユーザーID', 'width': 70},
+            'wtime':    {'text': '書き込み時間', 'width': 85},
+            'vtime':    {'text': '再生時間', 'width': 60},
+            '184':      {'text': '184', 'width': 20},
+            'position': {'text': '位置', 'width': 50},
+            'size':     {'text': '大きさ', 'width': 50},
+            'color':    {'text': '色', 'width': 50},
+            'command':  {'text': 'コマンド', 'width': 50},
+            'score':    {'text': 'スコア', 'width': 50}
+        }
         _ = [
             (
                 comment_treeview.heading(
-                    i,
-                    text=col,
+                    col,
+                    text=params[col]['text'],
                     command= lambda col_=col: \
                         treeview_sort_callback(comment_treeview, col_)
                 ),
-                comment_treeview.column(col, width=df_width[col], stretch=False)
+                comment_treeview.column(col, width=params[col]['width'], stretch=False)
             )
-            for i, col in enumerate(df.columns)
+            for col in df.columns
         ]
 
-        comment_treeview.grid(row=2, column=0)
+        comment_treeview.pack(fill=tk.X)
 
         self.comment_treeview = comment_treeview
 
