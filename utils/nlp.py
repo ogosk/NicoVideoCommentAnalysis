@@ -79,10 +79,11 @@ def analyze_comments(
     comments = [comment for comment in comments if len(comment) > 1]
 
     if pos == '名詞':
-        with open('data/chr.yaml', mode='rb') as f:
+        pdir = '/'.join(__file__.split('/')[:-2])+'/'
+        with open(pdir+'data/chr.yaml', mode='rb') as f:
             chrs = yaml.load(f, Loader=yaml.SafeLoader)
 
-        with open('data/exclude_noun.yaml', mode='rb') as f:
+        with open(pdir+'data/exclude_noun.yaml', mode='rb') as f:
             exclude_noun = yaml.load(f, Loader=yaml.SafeLoader)
 
         kanas = chrs['hiraganas']+chrs['katakanas']+chrs['hankanas']
@@ -176,7 +177,7 @@ def comments2vec(comments: list, model, tokenizer: str = 'janome'):
                 #if not all([(s in n_chrs) for s in token.surface()])
             ]
             return [w for w in result if w]
-   
+
     symbol_s, symbol_e = 44, 57
     Alphabet_s, Alphabet_e = 65, 90
     alphabet_s, alphabet_e = 97, 122

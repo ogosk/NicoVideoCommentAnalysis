@@ -53,7 +53,7 @@ PANE2_W = 1000
 COMMENT_LINES = 35
 
 WORDCLOUD_W = 600
-WORDCLOUD_H = 350
+WORDCLOUD_H = 450
 
 
 class Application(ttk.Frame):
@@ -81,7 +81,7 @@ class Application(ttk.Frame):
         )
         style.configure(
             'Card.TButton',
-            anchor=tk.W, borderwidth=0, justify=tk.LEFT, wraplength=550
+            anchor=tk.W, borderwidth=0, justify=tk.LEFT, wraplength=580
         )
         style.configure(
             'Normal.TButton',
@@ -114,14 +114,14 @@ class Application(ttk.Frame):
         # dummy
         self.card_dict = {
             'url': '',
-            'title': 'X'*200,
-            'owner': 'XXXXX',
+            'title': '',
+            'owner': '',
             'thumbnail': 'https://nicovideo.cdn.nimg.jp/web/img/common/video_deleted.jpg',
-            'post': 'XXXX/XX/XX XX:XX',
-            'view': 'X,XXX',
-            'comment': 'X,XXX',
-            'like': 'X,XXX',
-            'mylist': 'X,XXX'
+            'post': '',
+            'view': '',
+            'comment': '',
+            'like': '',
+            'mylist': ''
         }
         self.comments_df = pd.DataFrame(
             columns=[
@@ -429,6 +429,7 @@ class Application(ttk.Frame):
                     )
 
                 c_got_num, c_num = len(df), sum(c_nums)
+                u_got_num = len(set(df.user_id))
                 if len(forks) > 1:
                     row = overview.insert(
                         '', 0, text='トータル', open=True
@@ -704,6 +705,7 @@ class Application(ttk.Frame):
                     )
 
                 c_got_num, c_num = len(df), sum(c_nums)
+                u_got_num = len(set(df.user_id))
                 if len(forks) > 1:
                     row = overview.insert(
                         '', 0, text='トータル', open=True
@@ -886,14 +888,37 @@ class Application(ttk.Frame):
         def plot_click_callback():
             self.wordcloud_generate()
             self.wordcloud_view()
+            save_button['state'] = 'enable'
+
+        def save_click_callback():
+            timestamp = datetime.datetime.today().strftime('%y%m%d%H')
+            vid = self.ninfo.video_id
+            filename = filedialog.asksaveasfilename(
+                parent=self.master,
+                title='save',
+                initialfile=f'{timestamp}_{vid}',
+                filetypes=[('JPEG', '.jpg'), ('PNG', '.png')],
+                initialdir = "./",
+                defaultextension='png'
+            )
+            self.wordcloud_img.save(filename)
 
         note_label = ttk.Label(
             tab_frame,
             text='読み込みや抽出の際に「かんたんコメント」を除去しておくのがおすすめ'
         )
 
+        buttons_frame = ttk.Frame(tab_frame, padding=[10, 10, 10, 10])
+
         plot_button = ttk.Button(
-            tab_frame, text='plot', command=plot_click_callback,
+            buttons_frame,
+            text='plot', command=plot_click_callback,
+            style='Normal.TButton', padding=[0, 5, 0], width=8
+        )
+        save_button = ttk.Button(
+            buttons_frame,
+            text='save', state='disable', command=save_click_callback,
+            style='Normal.TButton', padding=[0, 5, 0], width=8
         )
 
         wordcloud_canvas = tk.Canvas(
@@ -902,9 +927,13 @@ class Application(ttk.Frame):
             height=WORDCLOUD_H
         )
 
-        note_label.pack()
-        plot_button.pack()
-        wordcloud_canvas.pack()
+        note_label.pack(anchor=tk.N)
+
+        buttons_frame.pack(anchor=tk.N, fill=tk.X, expand=True)
+        plot_button.pack(side=tk.LEFT, anchor=tk.N, expand=True)
+        save_button.pack(side=tk.LEFT, anchor=tk.N, expand=True)
+
+        wordcloud_canvas.pack(anchor=tk.N, expand=True)
 
         self.wordcloud_canvas = wordcloud_canvas
 
@@ -1003,10 +1032,10 @@ class Application(ttk.Frame):
                 'comment': card_dict['comment'],
                 'like': card_dict['like'],
                 'post': card_dict['post']
-            }),
+            }) if card_dict['url'] else '',
             style='Card.TButton', compound='left',
             image=thumbnail,
-            command=card_click_callback,
+            command=card_click_callback if card_dict['url'] else None,
             padding=[0, 0, 0],
             width=65
         )
@@ -1099,8 +1128,7 @@ class Application(ttk.Frame):
     def wordcloud_view(self):
         wordcloud_canvas = self.wordcloud_canvas
 
-        wordcloud = Image.open('./wordcloud.png')
-        wordcloud = ImageTk.PhotoImage(wordcloud)
+        wordcloud = ImageTk.PhotoImage(self.wordcloud_img)
         wordcloud_canvas.create_image(0, 0, image=wordcloud, anchor=tk.NW)
         wordcloud_canvas.photo = wordcloud
 
@@ -1112,7 +1140,7 @@ class Application(ttk.Frame):
 
     def wordcloud_generate(self):
         df = self.comments_df
-        results = analyze_comments(df.comment, tokenizer='janome')
+        results = analyze_comments(df.comment, tokenizer='sudachi')
         text = ' '.join(results)
 
         font_path = '/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'
@@ -1124,7 +1152,7 @@ class Application(ttk.Frame):
             max_words=500
         ).generate(text)
 
-        wordcloud.to_file('./wordcloud.png')
+        self.wordcloud_img = Image.fromarray(wordcloud.to_array())
 
 
 def main():

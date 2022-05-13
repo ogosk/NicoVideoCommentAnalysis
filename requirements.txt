@@ -1,14 +1,21 @@
 numpy
-yaml
+pyyaml
 bs4
 tqdm
-ipython
 kanjize
 wordcloud
+requests
+pandas
+ttkthemes
 
-# 形態素解析ライブラリ，どちらかだけでもよい
-janome
-sudachipy
+# 形態素解析ライブラリ
+# sudachipy
+# sudachidict_small/sdachidict_core/sudachidict_full
+# # アプリケーション化としては未対応
+# janome
 
 # doc2vec用
-gensim==3.8.3
+# gensim==3.8.3
+
+# jupyter用
+# ipython
