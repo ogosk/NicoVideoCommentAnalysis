@@ -107,6 +107,7 @@ class Application(ttk.Frame):
         style.map('Blue2.TCheckbutton',   foreground=[('!disabled', '#3399FF'), ('disabled', '#333333')])
         style.map('Purple2.TCheckbutton', foreground=[('!disabled', '#6633CC'), ('disabled', '#333333')])
         style.map('Black2.TCheckbutton',  foreground=[('!disabled', '#666666'), ('disabled', '#333333')])
+        style.configure('Comment.Treeview', rowheight=20)
 
         style.configure('Debug.TFrame', background='#FFFFFF')
 
@@ -149,10 +150,10 @@ class Application(ttk.Frame):
     def pane2_set(self):
         self.tabs_set()
         self.control_tab_set()
+        self.comment_tab_set()
         self.wordcloud_tab_set()
 
         self.card_view()
-        self.comment_view()
 
     def input_panel_set(self):
         # === panel frame ===
@@ -937,6 +938,91 @@ class Application(ttk.Frame):
 
         self.wordcloud_canvas = wordcloud_canvas
 
+    def comment_tab_set(self):
+        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
+        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['comment']])
+
+        params = {
+            'cid':      {'text': 'ｺﾒﾝﾄID', 'width': 60},
+            'comment':  {'text': 'コメント', 'width': 380},
+            'uid':      {'text': 'ﾕｰｻﾞｰID', 'width': 60},
+            'wtime':    {'text': '書き込み時間', 'width': 120},
+            'vtime':    {'text': '再生時間', 'width': 60},
+            '184':      {'text': '184', 'width': 20},
+            'position': {'text': '位置', 'width': 50},
+            'size':     {'text': '大きさ', 'width': 50},
+            'color':    {'text': '色', 'width': 50},
+            'command':  {'text': 'コマンド', 'width': 50},
+            'score':    {'text': 'スコア', 'width': 50}
+        }
+
+        columns = ['cid', 'comment', 'uid', 'wtime', 'vtime', 'score']
+
+        drops = [col for col in params.keys() if col not in columns]
+        renames = {
+            'comment_id': 'cid',
+            'user_id': 'uid',
+            'write_time': 'wtime',
+            'video_time': 'vtime'
+        }
+
+        comment_treeview = ttk.Treeview(
+            tab_frame, show='headings', columns=columns,
+            style='Comment.Treeview',
+            height=COMMENT_LINES
+        )
+
+        def treeview_sort_callback(tv, col):
+            if col in renames.values():
+                col_org = {v: k for k, v in renames.items()}[col]
+            else:
+                col_org = col
+
+            # 2回クリックで昇順と降順に対応する
+            # 両方ソートして比較して決めるため，効率は悪いが…
+            df_sample = pd.concat([self.comments_df[:5], self.comments_df[-5:]])
+            asc_sample = df_sample.sort_values(
+                [col_org, 'write_time'], ascending=[True, True]
+            )
+            desc_sample = df_sample.sort_values(
+                [col_org, 'write_time'], ascending=[False, True]
+            )
+
+            if (df_sample.index == asc_sample.index).all():
+                self.comments_df = self.comments_df.sort_values(
+                    [col_org, 'write_time'], ascending=[False, True]
+                )
+            else:
+                self.comments_df = self.comments_df.sort_values(
+                    [col_org, 'write_time'], ascending=[True, True]
+                )
+
+            self.comment_view()
+
+        _ = [
+            (
+                comment_treeview.heading(
+                    col,
+                    text=params[col]['text'],
+                    command= lambda col_=col: \
+                        treeview_sort_callback(comment_treeview, col_)
+                ),
+                comment_treeview.column(
+                    col,
+                    width=params[col]['width'],
+                    stretch=False
+                )
+            )
+            for col in columns
+        ]
+
+        comment_treeview.pack(fill=tk.X)
+
+        self.comment_treeview = comment_treeview
+
+        self.drops = drops
+        self.renames = renames
+
     def ranking_view(self):
         _ = [button.destroy() for button in self.rcards_frame.winfo_children()]
 
@@ -1046,84 +1132,25 @@ class Application(ttk.Frame):
         self.card_button = card_button
 
     def comment_view(self):
-        notebook, tabs_dict = self.tabs_notebook, self.tabs_dict
-        tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['comment']])
-
         if self.comment_treeview:
-            self.comment_treeview.destroy()
-
-        rename_dict = {
-            'comment_id': 'cid',
-            'user_id': 'uid',
-            'write_time': 'wtime',
-            'video_time': 'vtime'
-        }
+            comment_treeview = self.comment_treeview
+            comment_treeview.delete(*comment_treeview.get_children())
 
         df = self.comments_df.reset_index()
-        df = df.rename(
-            columns=rename_dict
-        ).drop(['184', 'position', 'size', 'color', 'command'], axis=1)
+        df = df.rename(columns=self.renames).drop(self.drops, axis=1)
 
-        comment_treeview = ttk.Treeview(
-            tab_frame, show='headings', columns=list(df.columns),
-            height=COMMENT_LINES
-        )
         for i in range(len(df)):
-            values = [df.iloc[i][j] for j in range(len(df.columns))]
-            comment_treeview.insert('', 'end', values=values)
-
-        def treeview_sort_callback(tv, col):
-            if col in rename_dict.values():
-                col_org = {v: k for k, v in rename_dict.items()}[col]
-            else:
-                col_org = col
-
-            # 2回クリックで昇順と降順に対応する
-            # 両方ソートして比較して決めるため，効率は悪いが…
-            df = self.comments_df
-            df_ascending = df.sort_values(
-                [col_org, 'write_time'], ascending=[True, True]
-            )
-            df_descending = df.sort_values(
-                [col_org, 'write_time'], ascending=[False, True]
-            )
-
-            if (df.index == df_ascending.index).all():
-                self.comments_df = df_descending
-            else:
-                self.comments_df = df_ascending
-
-            self.comment_view()
-
-        params = {
-            'cid':      {'text': 'コメントID', 'width': 50},
-            'comment':  {'text': 'コメント', 'width': 400},
-            'uid':      {'text': 'ユーザーID', 'width': 70},
-            'wtime':    {'text': '書き込み時間', 'width': 85},
-            'vtime':    {'text': '再生時間', 'width': 60},
-            '184':      {'text': '184', 'width': 20},
-            'position': {'text': '位置', 'width': 50},
-            'size':     {'text': '大きさ', 'width': 50},
-            'color':    {'text': '色', 'width': 50},
-            'command':  {'text': 'コマンド', 'width': 50},
-            'score':    {'text': 'スコア', 'width': 50}
-        }
-        _ = [
-            (
-                comment_treeview.heading(
-                    col,
-                    text=params[col]['text'],
-                    command= lambda col_=col: \
-                        treeview_sort_callback(comment_treeview, col_)
-                ),
-                comment_treeview.column(col, width=params[col]['width'], stretch=False)
-            )
-            for col in df.columns
-        ]
-
-        comment_treeview.pack(fill=tk.X)
-
-        self.comment_treeview = comment_treeview
+            values = [
+                datetime.datetime.fromtimestamp(df.iloc[i][j]).strftime('%y/%m/%d %H:%M:%S')
+                if col == 'wtime'
+                else str(datetime.timedelta(seconds=int(df.iloc[i][j])))
+                if col == 'vtime'
+                else df.iloc[i][j].replace('\n', '')
+                if col == 'comment'
+                else df.iloc[i][j]
+                for j, col in enumerate(df.columns)
+            ]
+            comment_treeview.insert('', tk.END, values=values)
 
     def wordcloud_view(self):
         wordcloud_canvas = self.wordcloud_canvas
