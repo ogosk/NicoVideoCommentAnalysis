@@ -186,9 +186,10 @@ class Application(ttk.Frame):
             self.card_view()
 
         vurl_button = ttk.Button(
-            panel_frame,
-            text='OK', command=vurl_click_callback,
-            style='Normal.TButton', width=5
+            panel_frame, style='Normal.TButton',
+            text='OK',
+            command=vurl_click_callback,
+            width=5
         )
 
         # === place ===
@@ -209,9 +210,8 @@ class Application(ttk.Frame):
         # === genre ===
         genre_var = tk.StringVar()
         genres_combobox = ttk.Combobox(
-            panel_frame,
-            textvariable=genre_var, values=list(genres_dict.keys()),
-            state='readonly',
+            panel_frame, state='readonly', textvariable=genre_var,
+            values=list(genres_dict.keys()),
             width=15
         )
 
@@ -220,18 +220,18 @@ class Application(ttk.Frame):
         # === term ===
         term_var = tk.StringVar()
         terms_combobox = ttk.Combobox(
-            panel_frame,
-            textvariable=term_var, values=list(terms_dict.keys()),
-            state='readonly',
+            panel_frame, state='readonly', textvariable=term_var,
+            values=list(terms_dict.keys()),
             width=5
         )
 
         terms_combobox.current(0)
 
         select_button = ttk.Button(
-            panel_frame,
-            text='ランキング取得', command=self.ranking_view,
-            style='Normal.TButton', width=10
+            panel_frame, style='Normal.TButton',
+            text='ランキング取得',
+            command=self.ranking_view,
+            width=10
         )
 
         # === ranking viewer ===
@@ -315,69 +315,54 @@ class Application(ttk.Frame):
         def load_set():
             load_frame = ttk.LabelFrame(
                 tab_frame,
-                text='コメント読み込み', relief=tk.RIDGE,
-                padding=[10, 10, 10, 10]
+                text='コメント読み込み',
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
             opt_frame = ttk.LabelFrame(
-                load_frame, text='options', relief=tk.RIDGE,
-                padding=[10, 10, 10, 10]
+                load_frame,
+                text='options',
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
 
             forks_frame = ttk.LabelFrame(
                 opt_frame,
-                text='コメントの種類', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                text='コメントの種類',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             fork0_var = tk.BooleanVar(value=True)
             fork0_checkbutton = ttk.Checkbutton(
-                forks_frame, variable=fork0_var, text='一般コメント'
+                forks_frame, variable=fork0_var,
+                text='一般コメント'
             )
             fork1_var = tk.BooleanVar(value=True)
             fork1_checkbutton = ttk.Checkbutton(
-                forks_frame, variable=fork1_var, text='投稿者コメント'
+                forks_frame, variable=fork1_var,
+                text='投稿者コメント'
             )
             fork2_var = tk.BooleanVar(value=True)
             fork2_checkbutton = ttk.Checkbutton(
-                forks_frame, variable=fork2_var, text='かんたんコメント'
+                forks_frame, variable=fork2_var,
+                text='かんたんコメント'
             )
 
             mode_frame = ttk.LabelFrame(
-                opt_frame, text='mode', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt_frame,
+                text='mode',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             mode_var = tk.StringVar(value='once')
             once_radiobutton = ttk.Radiobutton(
-                mode_frame, text='once', value='once', variable=mode_var
+                mode_frame, variable=mode_var,
+                text='once', value='once'
             )
             roughly_radiobutton = ttk.Radiobutton(
-                mode_frame, text='roughly', value='roughly', variable=mode_var
+                mode_frame, variable=mode_var,
+                text='roughly', value='roughly'
             )
             exactly_radiobutton = ttk.Radiobutton(
-                mode_frame, text='exactly', value='exactly', variable=mode_var
+                mode_frame, variable=mode_var,
+                text='exactly', value='exactly'
             )
-
-            hoprate_frame = ttk.LabelFrame(
-                opt_frame, text='hop rate', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
-            )
-            hoprate_label = ttk.Label(
-                hoprate_frame,
-                text='hop rate', relief=tk.SUNKEN,
-                width=4
-            )
-
-            def set_hoprate_label(value):
-                hoprate_label['text'] = str(round(float(value), 2))
-
-            hoprate_val = tk.DoubleVar(value=.1)
-            hoprate_scale = ttk.Scale(
-                hoprate_frame,
-                variable=hoprate_val, command=set_hoprate_label,
-                from_=0, to=.9,
-                orient=tk.HORIZONTAL,
-                length=130,
-            )
-            hoprate_scale.set(.1)
 
             def check_echeckbuttons():
                 df = self.comments_df
@@ -452,7 +437,6 @@ class Application(ttk.Frame):
                 options = {
                     'forks': [i for i, fork in enumerate(forks) if fork.get()],
                     'mode': mode_var.get(),
-                    'hop_rate': hoprate_val.get(),
                     'check': False
                 }
                 self.tabs_notebook.tab(tab_id=tabs_dict['comment'], state='normal')
@@ -488,19 +472,22 @@ class Application(ttk.Frame):
             buttons_frame = ttk.Frame(load_frame, padding=[10, 10, 10, 10])
 
             load_button = ttk.Button(
-                buttons_frame,
-                text='load', command=load_click_callback,
-                style='Normal.TButton', padding=[0, 5, 0], width=8
+                buttons_frame, style='Normal.TButton',
+                text='load',
+                command=load_click_callback,
+                width=8, padding=[0, 5, 0],
             )
             save_button = ttk.Button(
-                buttons_frame,
-                text='save', state='disable', command=save_click_callback,
-                style='Normal.TButton', padding=[0, 5, 0], width=8
+                buttons_frame, style='Normal.TButton', state='disable',
+                text='save',
+                command=save_click_callback,
+                width=8, padding=[0, 5, 0]
             )
 
             abstract_frame = ttk.LabelFrame(
                 load_frame,
-                text='取得コメント概要', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+                text='取得コメント概要',
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
 
             cols = ['#0', 'data']
@@ -535,10 +522,6 @@ class Application(ttk.Frame):
             roughly_radiobutton.pack(side=tk.LEFT, padx=20)
             exactly_radiobutton.pack(side=tk.LEFT, padx=20)
 
-            hoprate_frame.pack(anchor=tk.W, expand=True)
-            hoprate_scale.pack(side=tk.LEFT)
-            hoprate_label.pack(side=tk.LEFT)
-
             buttons_frame.pack(anchor=tk.NW, expand=True, fill=tk.X, pady=10)
             load_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
             save_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
@@ -552,33 +535,39 @@ class Application(ttk.Frame):
         def extract_set():
             extract_frame = ttk.LabelFrame(
                 tab_frame,
-                text='コメント抽出', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+                text='コメント抽出',
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
 
             opt1_frame = ttk.LabelFrame(
-                extract_frame, text='options', relief=tk.RIDGE,
-                padding=[10, 10, 10, 10]
+                extract_frame,
+                text='options',
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
             opt2_frame = ttk.Frame(
-                extract_frame, relief=tk.RIDGE,
-                padding=[10, 10, 10, 10]
+                extract_frame,
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
 
             forks_frame = ttk.LabelFrame(
-                opt1_frame, text='コメントの種類', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt1_frame,
+                text='コメントの種類',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             fork0_var = tk.BooleanVar(value=True)
             fork0_checkbutton = ttk.Checkbutton(
-                forks_frame, variable=fork0_var, text='一般コメント'
+                forks_frame, variable=fork0_var,
+                text='一般コメント'
             )
             fork1_var = tk.BooleanVar(value=True)
             fork1_checkbutton = ttk.Checkbutton(
-                forks_frame, variable=fork1_var, text='投稿者コメント'
+                forks_frame, variable=fork1_var,
+                text='投稿者コメント'
             )
             fork2_var = tk.BooleanVar(value=True)
             fork2_checkbutton = ttk.Checkbutton(
-                forks_frame, variable=fork2_var, text='かんたんコメント'
+                forks_frame, variable=fork2_var,
+                text='かんたんコメント'
             )
             forks_dict = {
                 '0': {'var': fork0_var, 'checkbutton': fork0_checkbutton},
@@ -587,22 +576,25 @@ class Application(ttk.Frame):
             }
 
             comment_frame = ttk.LabelFrame(
-                opt1_frame, text='コメント', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt1_frame,
+                text='コメント (スペース区切りでAND検索化)',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             comment_var = tk.StringVar()
             comment_entry = tk.Entry(comment_frame, textvariable=comment_var)
 
             uid_frame = ttk.LabelFrame(
-                opt1_frame, text='ユーザーID (,区切りで複数入力可)', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt1_frame,
+                text='ユーザーID (スペース区切りでOR検索可)',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             uid_var = tk.StringVar()
             uid_entry = tk.Entry(uid_frame, textvariable=uid_var)
 
             position_frame = ttk.LabelFrame(
-                opt1_frame, text='コメントの位置 (デフォルト：中)', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt1_frame,
+                text='コメントの位置 (デフォルト：中)',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             positions = ['ue', 'naka', 'shita']
             positions_dict = {
@@ -617,8 +609,9 @@ class Application(ttk.Frame):
             }
 
             size_frame = ttk.LabelFrame(
-                opt2_frame, text='コメントの大きさ (デフォルト：中)', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt2_frame,
+                text='コメントの大きさ (デフォルト：中)',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             sizes = ['big', 'medium', 'small']
             sizes_dict = {
@@ -633,14 +626,19 @@ class Application(ttk.Frame):
             }
 
             color_frame = ttk.LabelFrame(
-                opt1_frame, text='コメントの色', labelanchor=tk.NW,
-                padding=[5, 5, 5, 5]
+                opt1_frame,
+                text='コメントの色',
+                labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             general_frame = ttk.LabelFrame(
-                color_frame, text='全ユーザー', labelanchor=tk.NW
+                color_frame,
+                text='全ユーザー',
+                labelanchor=tk.NW
             )
             premium_frame = ttk.LabelFrame(
-                color_frame, text='プレミアム会員限定', labelanchor=tk.NW
+                color_frame,
+                text='プレミアム会員限定',
+                labelanchor=tk.NW
             )
             gcolors = [
                 'white', 'red', 'pink', 'orange', 'yellow', 'green',
@@ -728,10 +726,18 @@ class Application(ttk.Frame):
                 df = self.org_df
 
                 if opt_dict['comment']:
-                    df = df[df.comment.str.contains(opt_dict['comment'])]
+                    df = df[
+                        np.all(
+                            [
+                                df.comment.str.contains(com)
+                                for com in opt_dict['comment'].split(' ')
+                            ],
+                            axis=0
+                        )
+                    ]
 
                 if opt_dict['user_id']:
-                    df = df[df.user_id.isin(opt_dict['user_id'].split(','))]
+                    df = df[df.user_id.isin(opt_dict['user_id'].split(' '))]
 
                 df = df[
                     np.all(
@@ -782,24 +788,28 @@ class Application(ttk.Frame):
             buttons_frame = ttk.Frame(extract_frame, padding=[10, 10, 10, 10])
 
             select_button = ttk.Button(
-                buttons_frame,
-                text='select', state='disable', command=select_click_callback,
-                style='Normal.TButton', padding=[0, 5, 0], width=8,
+                buttons_frame, style='Normal.TButton', state='disable',
+                text='select',
+                command=select_click_callback,
+                width=8, padding=[0, 5, 0]
             )
             reset_button = ttk.Button(
-                buttons_frame,
-                text='reset', state='disable', command=reset_click_callback,
-                style='Normal.TButton', padding=[0, 5, 0], width=8,
+                buttons_frame, style='Normal.TButton', state='disable',
+                text='reset',
+                command=reset_click_callback,
+                width=8, padding=[0, 5, 0]
             )
             save_button = ttk.Button(
-                buttons_frame,
-                text='save', state='disable', command=save_click_callback,
-                style='Normal.TButton', padding=[0, 5, 0], width=8,
+                buttons_frame, style='Normal.TButton', state='disable',
+                text='save',
+                command=save_click_callback,
+                width=8, padding=[0, 5, 0]
             )
 
             abstract_frame = ttk.LabelFrame(
                 extract_frame,
-                text='抽出コメント概要', relief=tk.RIDGE, padding=[10, 10, 10, 10]
+                text='抽出コメント概要',
+                relief=tk.RIDGE, padding=[10, 10, 10, 10]
             )
 
             cols = ['#0', 'data']
@@ -943,58 +953,46 @@ class Application(ttk.Frame):
         tab_frame = notebook.nametowidget(notebook.tabs()[tabs_dict['comment']])
 
         params = {
-            'cid':      {'text': 'ｺﾒﾝﾄID', 'width': 60},
-            'comment':  {'text': 'コメント', 'width': 380},
-            'uid':      {'text': 'ﾕｰｻﾞｰID', 'width': 60},
-            'wtime':    {'text': '書き込み時間', 'width': 120},
-            'vtime':    {'text': '再生時間', 'width': 60},
-            '184':      {'text': '184', 'width': 20},
-            'position': {'text': '位置', 'width': 50},
-            'size':     {'text': '大きさ', 'width': 50},
-            'color':    {'text': '色', 'width': 50},
-            'command':  {'text': 'コマンド', 'width': 50},
-            'score':    {'text': 'スコア', 'width': 50}
+            'comment_id': {'width': 60,  'text': 'ｺﾒﾝﾄID'},
+            'comment':    {'width': 380, 'text': 'コメント'},
+            'user_id':    {'width': 60,  'text': 'ﾕｰｻﾞｰID'},
+            'write_time': {'width': 120, 'text': '書き込み時間'},
+            'video_time': {'width': 60,  'text': '再生時間'},
+            '184':        {'width': 20,  'text': '184'},
+            'position':   {'width': 50,  'text': '位置'},
+            'size':       {'width': 50,  'text': '大きさ'},
+            'color':      {'width': 50,  'text': '色'},
+            'command':    {'width': 50,  'text': 'コマンド'},
+            'score':      {'width': 50,  'text': 'スコア'}
         }
 
-        columns = ['cid', 'comment', 'uid', 'wtime', 'vtime', 'score']
-
-        drops = [col for col in params.keys() if col not in columns]
-        renames = {
-            'comment_id': 'cid',
-            'user_id': 'uid',
-            'write_time': 'wtime',
-            'video_time': 'vtime'
-        }
+        columns = [
+            'comment_id', 'comment', 'user_id', 'write_time', 'video_time', 'score'
+        ]
 
         comment_treeview = ttk.Treeview(
-            tab_frame, show='headings', columns=columns,
-            style='Comment.Treeview',
+            tab_frame, style='Comment.Treeview',
+            show='headings', columns=columns,
             height=COMMENT_LINES
         )
 
         def treeview_sort_callback(tv, col):
-            if col in renames.values():
-                col_org = {v: k for k, v in renames.items()}[col]
-            else:
-                col_org = col
-
             # 2回クリックで昇順と降順に対応する
-            # 両方ソートして比較して決めるため，効率は悪いが…
             df_sample = pd.concat([self.comments_df[:5], self.comments_df[-5:]])
             asc_sample = df_sample.sort_values(
-                [col_org, 'write_time'], ascending=[True, True]
+                [col, 'write_time'], ascending=[True, True]
             )
             desc_sample = df_sample.sort_values(
-                [col_org, 'write_time'], ascending=[False, True]
+                [col, 'write_time'], ascending=[False, True]
             )
 
             if (df_sample.index == asc_sample.index).all():
                 self.comments_df = self.comments_df.sort_values(
-                    [col_org, 'write_time'], ascending=[False, True]
+                    [col, 'write_time'], ascending=[False, True]
                 )
             else:
                 self.comments_df = self.comments_df.sort_values(
-                    [col_org, 'write_time'], ascending=[True, True]
+                    [col, 'write_time'], ascending=[True, True]
                 )
 
             self.comment_view()
@@ -1020,8 +1018,7 @@ class Application(ttk.Frame):
 
         self.comment_treeview = comment_treeview
 
-        self.drops = drops
-        self.renames = renames
+        self.columns = columns
 
     def ranking_view(self):
         _ = [button.destroy() for button in self.rcards_frame.winfo_children()]
@@ -1110,7 +1107,7 @@ class Application(ttk.Frame):
             # video_frame.pack(fill='both', expand=True)
 
         card_button = ttk.Button(
-            self.pane2_frame,
+            self.pane2_frame, style='Card.TButton',
             text=video_text.format(**{
                 'title': title,
                 'owner': self.ninfo.owner_name if self.ninfo else '',
@@ -1119,11 +1116,9 @@ class Application(ttk.Frame):
                 'like': card_dict['like'],
                 'post': card_dict['post']
             }) if card_dict['url'] else '',
-            style='Card.TButton', compound='left',
-            image=thumbnail,
+            image=thumbnail, compound='left',
             command=card_click_callback if card_dict['url'] else None,
-            padding=[0, 0, 0],
-            width=65
+            width=65, padding=[0, 0, 0]
         )
 
         card_button.photo = thumbnail
@@ -1136,19 +1131,21 @@ class Application(ttk.Frame):
             comment_treeview = self.comment_treeview
             comment_treeview.delete(*comment_treeview.get_children())
 
-        df = self.comments_df.reset_index()
-        df = df.rename(columns=self.renames).drop(self.drops, axis=1)
+        df = self.comments_df.reset_index().drop(
+            [col for col in self.comments_df.columns if col not in self.columns],
+            axis=1
+        )
 
         for i in range(len(df)):
             values = [
-                datetime.datetime.fromtimestamp(df.iloc[i][j]).strftime('%y/%m/%d %H:%M:%S')
-                if col == 'wtime'
-                else str(datetime.timedelta(seconds=int(df.iloc[i][j])))
-                if col == 'vtime'
-                else df.iloc[i][j].replace('\n', '')
+                datetime.datetime.fromtimestamp(df.iloc[i][col]).strftime('%y/%m/%d %H:%M:%S')
+                if col == 'write_time'
+                else str(datetime.timedelta(seconds=int(df.iloc[i][col])))
+                if col == 'video_time'
+                else df.iloc[i][col].replace('\n', '')
                 if col == 'comment'
-                else df.iloc[i][j]
-                for j, col in enumerate(df.columns)
+                else df.iloc[i][col]
+                for col in self.columns
             ]
             comment_treeview.insert('', tk.END, values=values)
 

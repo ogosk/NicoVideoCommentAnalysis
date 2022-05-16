@@ -43,6 +43,7 @@ video_html = \
 </html>
 '''
 
+cool_time = 60
 
 class NicovideoInfomation():
     def __init__(self, video_url: str = None, video_id: str = None):
@@ -95,7 +96,6 @@ class NicovideoInfomation():
         self,
         forks: Union[List, int] = [0, 1, 2],
         mode: str = 'once',
-        hop_rate: float = .5,
         check: bool = True,
         **tqdm_kwargs
     ):
@@ -244,6 +244,8 @@ class NicovideoInfomation():
 
             return sorted(list(tgt_forks))
 
+        post_time = self.post_time
+
         now_time = datetime.datetime.now().timestamp()
         now_df = convert_to_df(fetch_comments(forks))
 
@@ -258,30 +260,52 @@ class NicovideoInfomation():
             return comments_df
 
         # 1時間前のコメントを基準にしてそこから遡って読み込む
-        tmp_time = now_time - 60*60
-        tmp_df = convert_to_df(fetch_comments(forks))
+        tmp_time = now_time - 60*60*1
+        tmp_df = convert_to_df(fetch_comments(forks, when=tmp_time))
 
         comments_df = merge_df(comments_df, tmp_df)
         forks = check_df(comments_df, forks)
 
+        avg_cnum = {
+            fork: len(tmp_df[tmp_df.index.str[0] == str(fork)])
+            for fork in forks
+        }
+
         try_num = 1+1
-        with tqdm(total=int(now_time-self.post_time), **tqdm_kwargs) as pbar:
+        day_time = 60*60*24
+        with tqdm(total=int(now_time-post_time), **tqdm_kwargs) as pbar:
             while forks:
                 try_num += 1
                 fork2tmp = {
                     fork: tmp_df[tmp_df.index.str[0] == str(fork)]
                     for fork in forks
                 }
-                tgt_time = max([
-                    fork2tmp[fork].write_time[int((len(fork2tmp[fork])-1)*hop_rate)]
-                    for fork in forks
-                    if not fork2tmp[fork].empty
-                ]+[-1])
-                if tgt_time == -1:
-                    sleep(3)
-                    continue
-                tgt_df = convert_to_df(fetch_comments(forks, when=tgt_time))
-                if tgt_df.empty:
+
+                tmp_times = []
+                for fork in forks:
+                    fork_df = fork2tmp[fork]
+                    for i, t in enumerate(fork_df.write_time):
+                        if len(fork_df) <= 1:
+                            break
+                        elif abs(t-fork_df.write_time[i+1]) < day_time:
+                            break
+                    else:
+                        t = fork_df.write_time[0]
+
+                    tmp_times.append(t)
+                tgt_time = max(tmp_times)
+
+                for _ in range(3):
+                    tgt_df = convert_to_df(fetch_comments(forks, when=tgt_time))
+                    if not tgt_df.empty or \
+                    min(abs(now_time-tgt_time), abs(post_time-tgt_time)) < day_time:
+                        break
+                    else:
+                        pbar.set_description(f'Loading roughly [{try_num}]')
+                        try_num += 1
+                        for _ in tqdm(range(cool_time), desc='Waiting'):
+                            sleep(1)
+                else:
                     break
 
                 comments_df = merge_df(comments_df, tgt_df)
@@ -308,6 +332,7 @@ class NicovideoInfomation():
             pbar.update(pbar.total-pbar.n)
 
         if mode == 'exactly':
+            comments_df.sort_values('write_time', inplace=True)
             fork2com = {
                 fork: comments_df[comments_df.index.str[0] == str(fork)]
                 for fork in forks
@@ -315,45 +340,32 @@ class NicovideoInfomation():
             unload_cids = {
                 fork:
                     sorted(list(
-                        set(range(1, len(fork2com[fork])+1)) - \
+                        set(range(1, int(fork2com[fork].index[-1][2:])+1)) - \
                         set(map(int, fork2com[fork].index.str[2:]))
                     ))
                 for fork in forks
             }
-            # 一度に読み込める大体のコメントの数(目安)
-            avg_cnum = {
-                0: min(500, self.video_counter['comment']//10),
-                1: 1000,
-                2: 100
-            }
-            w_len = {k: int(v*.8) for k, v in avg_cnum.items()}
 
             tgt_cids = {fork: [] for fork in forks}
             for fork in forks:
-                r_cid = unload_cids[fork][-1]
-                l_cid, m_cid = r_cid-2*w_len[fork], r_cid-w_len[fork]
+                w = avg_cnum[fork]
+                max_cid = int(fork2com[fork].index[-1][2:])
+                l_cid = unload_cids[fork][0]
+                r_cid = min(l_cid + w, max_cid)
 
-                if m_cid < 0:
+                if r_cid != max_cid:
                     tgt_cids[fork].append(r_cid)
-                    continue
-                else:
-                    tgt_cids[fork].append(m_cid)
 
-                for cid in unload_cids[fork][::-1]:
-                    if l_cid >= cid:
-                        r_cid = l_cid
-                        l_cid, m_cid = r_cid-2*w_len[fork], r_cid-w_len[fork]
+                for i in range(1, len(unload_cids[fork])):
+                    cid = unload_cids[fork][i]
+                    if r_cid < cid:
+                        l_cid = cid
+                        r_cid = min(l_cid + w, max_cid)
 
-                        if r_cid < 0:
-                            break
-
-                        if m_cid < 0:
+                        if r_cid != max_cid:
                             tgt_cids[fork].append(r_cid)
-                            break
-                        else:
-                            tgt_cids[fork].append(m_cid)
 
-            tgt_whens = {}
+            tgt_whens = {fork: [] for fork in forks}
             for fork in forks:
                 cids = tgt_cids[fork]
                 com_cids = sorted(list(map(int, fork2com[fork].index.str[2:])))
@@ -367,12 +379,19 @@ class NicovideoInfomation():
                 tgt_whens[fork] = fork2com[fork].loc[tmp, :].write_time.values
 
             for fork in forks.copy():
-                for when in tqdm(
+                for tgt_time in tqdm(
                     tgt_whens[fork], desc=f'{fork}-Loading exactly', **tqdm_kwargs
                 ):
-                    tgt_df = convert_to_df(
-                        fetch_comments(forks, when=when)
-                    )
+                    for _ in range(3):
+                        tgt_df = convert_to_df(fetch_comments([fork], when=tgt_time))
+
+                        if not tgt_df.empty or \
+                        min(abs(now_time-tgt_time), abs(post_time-tgt_time)) < day_time:
+                            break
+                        else:
+                            for _ in tqdm(range(cool_time), desc='Waiting'):
+                                sleep(1)
+
                     comments_df = merge_df(comments_df, tgt_df)
                     forks = check_df(comments_df, forks)
 

@@ -22,7 +22,10 @@ def analyze_comments(
 
     elif tokenizer == 'sudachi':
         from sudachipy import dictionary, tokenizer
-        tokenizer_obj = dictionary.Dictionary().create()
+        try:
+            tokenizer_obj = dictionary.Dictionary().create()
+        except:
+            tokenizer_obj = dictionary.Dictionary(dict_type='small').create()
 
         def tokenize(comment):
             result = [
