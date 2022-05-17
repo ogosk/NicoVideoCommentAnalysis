@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
+# import tkcalendar as tkc
 import ttkthemes
 import numpy as np
 import pandas as pd
@@ -345,6 +346,21 @@ class Application(ttk.Frame):
                 text='かんたんコメント'
             )
 
+            # span_frame = ttk.LabelFrame(
+            #     opt_frame,
+            #     text='取得期間',
+            #     labelanchor=tk.NW, padding=[5, 5, 5, 5]
+            # )
+
+            # start_dateentry = tkc.DateEntry(
+            #     span_frame, lacale='jp_JP', mindate=
+            # )
+            # end_dateentry = tkc.DateEntry(
+            #     span_frame, lacale='jp_JP'
+            # )
+            #
+            # calendar_dateentry.pack(anchor=tk.W)
+
             mode_frame = ttk.LabelFrame(
                 opt_frame,
                 text='mode',
@@ -437,7 +453,8 @@ class Application(ttk.Frame):
                 options = {
                     'forks': [i for i, fork in enumerate(forks) if fork.get()],
                     'mode': mode_var.get(),
-                    'check': False
+                    'check': False,
+                    'tqdm_fn': tqdm_tk
                 }
                 self.tabs_notebook.tab(tab_id=tabs_dict['comment'], state='normal')
                 self.tabs_notebook.tab(tab_id=tabs_dict['wordcloud'], state='normal')
@@ -492,8 +509,8 @@ class Application(ttk.Frame):
 
             cols = ['#0', 'data']
             params = {
-                '#0':   {'text': '種類', 'width': 175},
-                'data': {'text': 'データ', 'width': 120}
+                '#0':   {'text': '種類', 'width': 180},
+                'data': {'text': 'データ', 'width': 140}
             }
             overview_treeview = ttk.Treeview(
                 abstract_frame, columns=cols[1:], height=5
@@ -512,7 +529,7 @@ class Application(ttk.Frame):
 
             opt_frame.pack(side=tk.LEFT, anchor=tk.W, fill=tk.Y, expand=True)
 
-            forks_frame.pack(anchor=tk.W, expand=True)
+            forks_frame.pack(anchor=tk.W, fill=tk.X, expand=True)
             fork0_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork1_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
             fork2_checkbutton.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -526,8 +543,8 @@ class Application(ttk.Frame):
             load_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
             save_button.pack(side=tk.LEFT, anchor=tk.CENTER, expand=True)
 
-            abstract_frame.pack(anchor=tk.SW, fill=tk.BOTH)
-            overview_treeview.pack()
+            abstract_frame.pack(anchor=tk.SW, fill=tk.Y, expand=True)
+            overview_treeview.pack(expand=True)
 
         load_set()
 
@@ -577,7 +594,7 @@ class Application(ttk.Frame):
 
             comment_frame = ttk.LabelFrame(
                 opt1_frame,
-                text='コメント (スペース区切りでAND検索化)',
+                text='コメント (スペース区切りでAND検索可)',
                 labelanchor=tk.NW, padding=[5, 5, 5, 5]
             )
             comment_var = tk.StringVar()
@@ -739,17 +756,15 @@ class Application(ttk.Frame):
                 if opt_dict['user_id']:
                     df = df[df.user_id.isin(opt_dict['user_id'].split(' '))]
 
-                df = df[
-                    np.all(
-                        (
-                            df.index.str[0].isin(opt_dict['forks']),
-                            df.position.isin(opt_dict['position']),
-                            df['size'].isin(opt_dict['size']),
-                            df.color.isin(opt_dict['color'])
-                        ),
-                        axis=0
-                    )
-                ].sort_values('write_time')
+                df = df[np.all(
+                    (
+                        df.index.str[0].isin(opt_dict['forks']),
+                        df.position.isin(opt_dict['position']),
+                        df['size'].isin(opt_dict['size']),
+                        df.color.isin(opt_dict['color'])
+                    ),
+                    axis=0
+                )].sort_values('write_time')
 
                 self.comments_df = df
 
@@ -814,8 +829,8 @@ class Application(ttk.Frame):
 
             cols = ['#0', 'data']
             params = {
-                '#0':   {'text': '種類', 'width': 175},
-                'data': {'text': 'データ', 'width': 120}
+                '#0':   {'text': '種類', 'width': 180},
+                'data': {'text': 'データ', 'width': 140}
             }
             overview_treeview = ttk.Treeview(
                 abstract_frame, columns=cols[1:], height=5
@@ -954,7 +969,7 @@ class Application(ttk.Frame):
 
         params = {
             'comment_id': {'width': 60,  'text': 'ｺﾒﾝﾄID'},
-            'comment':    {'width': 380, 'text': 'コメント'},
+            'comment':    {'width': 400, 'text': 'コメント'},
             'user_id':    {'width': 60,  'text': 'ﾕｰｻﾞｰID'},
             'write_time': {'width': 120, 'text': '書き込み時間'},
             'video_time': {'width': 60,  'text': '再生時間'},
@@ -1037,7 +1052,7 @@ class Application(ttk.Frame):
 
         video_text = '{title}\n▶️{view} 💬{comment} 💕{like} 🕘{post}'
         card_width = self.rcards_frame.winfo_width()
-        with tqdm_tk(info_dict.items()) as pbar:
+        with tqdm_tk(info_dict.items(), leave=False) as pbar:
             for i, d in pbar:
                 thumbnail = url2img(d['thumbnail'])
                 thumbnail = ImageTk.PhotoImage(thumbnail.resize((63, 47)))
@@ -1050,10 +1065,10 @@ class Application(ttk.Frame):
                     self.rcards_frame,
                     text=video_text.format(**{
                         'title': title,
-                        'view': d['view'],
+                        'view':    d['view'],
                         'comment': d['comment'],
-                        'like': d['like'],
-                        'post': d['post']
+                        'like':    d['like'],
+                        'post':    d['post']
                     }),
                     padding=[0, 0, 0], width=card_width,
                     style='Ranking.TButton', compound='left',
@@ -1067,8 +1082,6 @@ class Application(ttk.Frame):
                 # !重要! これがないとプログレスバーが描画されない
                 # ループが終わるまで描画の処理が先送りになるため？
                 pbar._tk_window.update()
-            # 役目を終えたプログレスバーウィンドウを虚空に帰す
-            pbar._tk_window.destroy()
 
     def card_view(self):
         if self.card_button:
@@ -1109,12 +1122,12 @@ class Application(ttk.Frame):
         card_button = ttk.Button(
             self.pane2_frame, style='Card.TButton',
             text=video_text.format(**{
-                'title': title,
-                'owner': self.ninfo.owner_name if self.ninfo else '',
-                'view': card_dict['view'],
+                'title':   title,
+                'owner':   self.ninfo.owner_name if self.ninfo else '',
+                'view':    card_dict['view'],
                 'comment': card_dict['comment'],
-                'like': card_dict['like'],
-                'post': card_dict['post']
+                'like':    card_dict['like'],
+                'post':    card_dict['post']
             }) if card_dict['url'] else '',
             image=thumbnail, compound='left',
             command=card_click_callback if card_dict['url'] else None,

@@ -7,7 +7,7 @@ from time import sleep
 
 from bs4 import BeautifulSoup
 from tqdm.auto import tqdm
-from typing import Union, List
+from typing import Union, List, Callable
 
 
 base_params = {
@@ -97,7 +97,7 @@ class NicovideoInfomation():
         forks: Union[List, int] = [0, 1, 2],
         mode: str = 'once',
         check: bool = True,
-        **tqdm_kwargs
+        tqdm_fn: Callable = tqdm,
     ):
         assert type(forks) == int or all([type(fork) == int for fork in forks])
         assert mode in ['once', 'roughly', 'exactly']
@@ -273,7 +273,7 @@ class NicovideoInfomation():
 
         try_num = 1+1
         day_time = 60*60*24
-        with tqdm(total=int(now_time-post_time), **tqdm_kwargs) as pbar:
+        with tqdm_fn(total=int(now_time-post_time), leave=False) as pbar:
             while forks:
                 try_num += 1
                 fork2tmp = {
@@ -287,7 +287,7 @@ class NicovideoInfomation():
                     for i, t in enumerate(fork_df.write_time):
                         if len(fork_df) <= 1:
                             break
-                        elif abs(t-fork_df.write_time[i+1]) < day_time:
+                        elif abs(t-fork_df.write_time[i+1]) < day_time/2:
                             break
                     else:
                         t = fork_df.write_time[0]
@@ -297,14 +297,19 @@ class NicovideoInfomation():
 
                 for _ in range(3):
                     tgt_df = convert_to_df(fetch_comments(forks, when=tgt_time))
+
                     if not tgt_df.empty or \
                     min(abs(now_time-tgt_time), abs(post_time-tgt_time)) < day_time:
                         break
                     else:
                         pbar.set_description(f'Loading roughly [{try_num}]')
                         try_num += 1
-                        for _ in tqdm(range(cool_time), desc='Waiting'):
-                            sleep(1)
+                        # Cooling
+                        with tqdm_fn(range(cool_time), desc='Waiting', leave=False) as pbar2:
+                            if hasattr(pbar2, '_tk_window'):
+                                _ = [(sleep(1), pbar2._tk_window.update()) for _ in pbar2]
+                            else:
+                                _ = [sleep(1) for _ in pbar2]
                 else:
                     break
 
@@ -317,6 +322,9 @@ class NicovideoInfomation():
                 pbar.set_description(f'Loading roughly [{try_num}]')
                 pbar.update(int(tmp_time-tgt_time))
 
+                if hasattr(pbar, '_tk_window'):
+                    pbar._tk_window.update()
+
                 comp_list = [
                     not (
                         set(tgt_df[tgt_df.index.str[0] == str(fork)].index) - \
@@ -324,6 +332,7 @@ class NicovideoInfomation():
                     )
                     for fork in forks
                 ]
+
                 if all(comp_list):
                     break
 
@@ -338,8 +347,7 @@ class NicovideoInfomation():
                 for fork in forks
             }
             unload_cids = {
-                fork:
-                    sorted(list(
+                fork: sorted(list(
                         set(range(1, int(fork2com[fork].index[-1][2:])+1)) - \
                         set(map(int, fork2com[fork].index.str[2:]))
                     ))
@@ -379,24 +387,30 @@ class NicovideoInfomation():
                 tgt_whens[fork] = fork2com[fork].loc[tmp, :].write_time.values
 
             for fork in forks.copy():
-                for tgt_time in tqdm(
-                    tgt_whens[fork], desc=f'{fork}-Loading exactly', **tqdm_kwargs
-                ):
-                    for _ in range(3):
-                        tgt_df = convert_to_df(fetch_comments([fork], when=tgt_time))
+                with tqdm_fn(tgt_whens[fork], desc=f'{fork}-Loading exactly', leave=False) as pbar:
+                    for tgt_time in pbar:
+                        for _ in range(3):
+                            tgt_df = convert_to_df(fetch_comments([fork], when=tgt_time))
 
-                        if not tgt_df.empty or \
-                        min(abs(now_time-tgt_time), abs(post_time-tgt_time)) < day_time:
+                            if not tgt_df.empty or \
+                            min(abs(now_time-tgt_time), abs(post_time-tgt_time)) < day_time/2:
+                                break
+                            else:
+                                # Cooling
+                                with tqdm_fn(range(cool_time), desc='Waiting', leave=False) as pbar2:
+                                    if hasattr(pbar2, '_tk_window'):
+                                        _ = [(sleep(1), pbar2._tk_window.update()) for _ in pbar2]
+                                    else:
+                                        _ = [sleep(1) for _ in pbar2]
+
+                        comments_df = merge_df(comments_df, tgt_df)
+                        forks = check_df(comments_df, forks)
+
+                        if not forks:
                             break
-                        else:
-                            for _ in tqdm(range(cool_time), desc='Waiting'):
-                                sleep(1)
 
-                    comments_df = merge_df(comments_df, tgt_df)
-                    forks = check_df(comments_df, forks)
-
-                    if not forks:
-                        break
+                        if hasattr(pbar, '_tk_window'):
+                            pbar._tk_window.update()
 
         self.comments_df = comments_df.sort_values('write_time')
 
